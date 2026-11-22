@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طبعة 3D — تصميم مجسمات جاهزة للطباعة</title>
+<meta name="description" content="حوّل صورك إلى مجسمات ثلاثية الأبعاد جاهزة للطباعة، وصمّم ميداليات أكواب القهوة باسم الكوفي، واحصل على ملف STL فوراً.">
+<meta name="theme-color" content="#16110d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4 58 18v28L32 60 6 46V18z' fill='%23f2a541'/%3E%3Cpath d='M32 4 58 18 32 32 6 18z' fill='%23ffd08a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@500;700;800&family=Reem+Kufi:wght@600;700&family=Lalezar&family=Changa:wght@600;800&family=Lemonada:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/three.module.min.js",
+  "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+<script src="vendor/jszip.min.js" defer></script>
+<script src="vendor/qrcode.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#home" data-go="home">
+    <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true"><path d="M32 4 58 18v28L32 60 6 46V18z" fill="var(--accent)"/><path d="M32 4 58 18 32 32 6 18z" fill="var(--accent-2)"/><path d="M32 32v28L6 46V18z" fill="var(--accent-3)"/></svg>
+    <span id="brandName">طبعة 3D</span>
+  </a>
+  <nav class="tabs" role="tablist">
+    <button data-go="home" class="active">الرئيسية</button>
+    <button data-go="keychain">ميداليات الأكواب</button>
+    <button data-go="photo">صورة ← مجسم</button>
+    <button data-go="ai">مجسم كامل AI</button>
+    <button data-go="guide">دليل الطباعة</button>
+  </nav>
+  <button class="icon-btn" id="themeBtn" title="تبديل الوضع الليلي" aria-label="تبديل الوضع"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
+</header>
+
+<main>
+<!-- ===================== الرئيسية ===================== -->
+<section id="home" class="page active">
+  <div class="hero">
+    <div class="hero-text">
+      <span class="pill">جاهز للطباعة • STL • بدون تسجيل</span>
+      <h1>صمّم مجسمك ثلاثي الأبعاد<br><em>واطبعه اليوم</em></h1>
+      <p>ارفع صورك وحوّلها لمجسمات دقيقة، أو صمّم ميدالية على شكل كوب باسم الكوفي حقك خلال ثواني. كل المعالجة تتم داخل متصفحك — صورك ما تطلع من جهازك.</p>
+      <div class="cta">
+        <button class="btn primary" data-go="keychain">☕ صمّم ميدالية كوب</button>
+        <button class="btn ghost" data-go="photo">🖼️ حوّل صورة لمجسم</button>
+      </div>
+    </div>
+    <div class="hero-3d" id="heroView"></div>
+  </div>
+
+  <div class="features">
+    <article class="card" data-go="keychain"><div class="ficon">☕</div><h3>ميداليات أكواب القهوة</h3><p>تيك أواي، آيس بشفاطة، أو مج ببخار — اكتب اسم الكوفي بالعربي أو الإنجليزي ويطلع بارز أو محفور.</p></article>
+    <article class="card" data-go="photo"><div class="ficon">🖼️</div><h3>صور متعددة دفعة وحدة</h3><p>ليثوفين مضيء، نقش بارز، ميدالية من شعار، أو قالب كوكيز — وحمّل الكل بملف ZIP.</p></article>
+    <article class="card" data-go="ai"><div class="ficon">🧠</div><h3>مجسم كامل بالذكاء الاصطناعي</h3><p>ارفع حتى 4 صور لنفس الشيء من زوايا مختلفة ويتحول لمجسم كامل بمقاس دقيق بالمليمتر.</p></article>
+    <article class="card" data-go="keychain"><div class="ficon">🎨</div><h3>طباعة بلونين</h3><p>صدّر القاعدة والنص كملفين منفصلين للطابعات متعددة الألوان، أو استخدم تغيير اللون عند الطبقة.</p></article>
+    <article class="card" data-go="keychain"><div class="ficon">📦</div><h3>طلبات بالجملة</h3><p>اكتب قائمة أسماء (لكل موظف أو زبون) وحمّل ميدالية لكل اسم بضغطة واحدة.</p></article>
+    <article class="card" data-go="keychain"><div class="ficon">💰</div><h3>حاسبة التكلفة</h3><p>وزن الفلامنت، وقت الطباعة التقريبي، والسعر المقترح لكل قطعة تلقائياً.</p></article>
+  </div>
+</section>
+
+<!-- ===================== الميداليات ===================== -->
+<section id="keychain" class="page">
+  <div class="workspace">
+    <aside class="panel">
+      <h2>مصمم الميداليات</h2>
+      <label class="lbl">الشكل</label>
+      <div class="tpl-grid" id="tplGrid"></div>
+
+      <div class="field"><label for="kText1">الاسم الرئيسي</label><input id="kText1" value="Bean House" maxlength="40"></div>
+      <div class="field"><label for="kText2">سطر ثانٍ (اختياري)</label><input id="kText2" value="SPECIALTY COFFEE" maxlength="40"></div>
+      <div class="field qr-only"><label for="kQR">رابط الـ QR (منيو، انستقرام، موقع)</label><input id="kQR" dir="ltr" value="https://instagram.com/"></div>
+      <div class="field logo-only">
+        <label>صورة الشعار (PNG شفاف أفضل)</label>
+        <input type="file" id="kLogo" accept="image/*">
+        <div class="row2">
+          <div><label for="kThresh">العتبة <output id="kThreshO">128</output></label><input type="range" id="kThresh" min="20" max="240" value="128"></div>
+          <div><label class="chk"><input type="checkbox" id="kInvert"> عكس</label></div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field"><label for="kFont">الخط</label>
+          <select id="kFont">
+            <option>Cairo</option><option>Tajawal</option><option>Reem Kufi</option><option>Lalezar</option><option>Changa</option><option>Lemonada</option>
+          </select></div>
+        <div class="field"><label for="kMode">النص</label>
+          <select id="kMode"><option value="raised">بارز</option><option value="engraved">محفور</option></select></div>
+      </div>
+
+      <div class="field"><label for="kSize"><span id="kSizeLbl">الارتفاع</span> <output id="kSizeO">55</output> مم</label><input type="range" id="kSize" min="25" max="120" value="55"></div>
+
+      <details class="more" open>
+        <summary>إعدادات متقدمة</summary>
+        <div class="row2">
+          <div class="field"><label for="kBase">سماكة القاعدة (مم)</label><input type="number" id="kBase" value="3" step="0.2" min="1" max="10"></div>
+          <div class="field"><label for="kRaise">ارتفاع البارز (مم)</label><input type="number" id="kRaise" value="1" step="0.2" min="0.4" max="5"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="kHole">قطر الثقب (مم)</label><input type="number" id="kHole" value="4.5" step="0.5" min="2" max="10"></div>
+          <div class="field"><label for="kRes">الدقة</label>
+            <select id="kRes"><option value="0.2">عادية 0.2مم</option><option value="0.15" selected>عالية 0.15مم</option><option value="0.1">فائقة 0.1مم</option></select></div>
+        </div>
+        <div class="row2">
+          <label class="chk"><input type="checkbox" id="kBorder" checked> إطار بارز</label>
+          <label class="chk"><input type="checkbox" id="kDecor" checked> زخارف</label>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="kC1">لون القاعدة</label><input type="color" id="kC1" value="#3b2a20"></div>
+          <div class="field"><label for="kC2">لون النص</label><input type="color" id="kC2" value="#f5e6c8"></div>
+        </div>
+      </details>
+
+      <details class="more">
+        <summary>📦 طلب بالجملة (اسم في كل سطر)</summary>
+        <textarea id="kBatch" rows="5" placeholder="Bean House&#10;قهوة الصباح&#10;Mocha Lab"></textarea>
+        <button class="btn small" id="kBatchBtn">تحميل الكل ZIP</button>
+      </details>
+    </aside>
+
+    <div class="stage">
+      <div class="viewer" id="kView">
+        <div class="vtools">
+          <button class="icon-btn" id="kRot" title="تدوير تلقائي">⟳</button>
+          <button class="icon-btn" id="kTop" title="منظر علوي">⬒</button>
+          <button class="icon-btn" id="kFlat" title="عرض ثنائي الأبعاد">2D</button>
+        </div>
+        <canvas id="k2d" class="flat2d" hidden></canvas>
+        <div class="busy" id="kBusy" hidden>جارٍ التوليد…</div>
+      </div>
+      <div class="warn" id="kWarn" hidden></div>
+      <div class="stats" id="kStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="kSTL">⬇ تحميل STL</button>
+        <button class="btn" id="k2C">🎨 ملفين للونين (ZIP)</button>
+        <button class="btn" id="kPNG">📷 صورة المعاينة</button>
+        <button class="btn" id="kSave">⭐ حفظ التصميم</button>
+        <button class="btn wa" id="kWA" hidden>💬 اطلبها طباعة</button>
+      </div>
+      <div class="saved" id="kSaved"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== الصور ===================== -->
+<section id="photo" class="page">
+  <div class="workspace">
+    <aside class="panel">
+      <h2>من صورة إلى مجسم</h2>
+      <label class="drop" id="pDrop">
+        <input type="file" id="pFiles" accept="image/*" multiple hidden>
+        <strong>اسحب الصور هنا أو اضغط للاختيار</strong>
+        <span>يمكنك رفع أكثر من صورة — كل صورة تتحول لمجسم مستقل</span>
+      </label>
+      <div class="thumbs" id="pThumbs"></div>
+
+      <label class="lbl">نوع التحويل</label>
+      <div class="seg" id="pMode">
+        <button data-m="lithophane" class="active">💡 ليثوفين</button>
+        <button data-m="relief">🗿 نقش بارز</button>
+        <button data-m="keychain">🔑 ميدالية</button>
+        <button data-m="cookie">🍪 قالب كوكيز</button>
+      </div>
+      <p class="hint" id="pHint"></p>
+
+      <div class="field"><label for="pWidth">العرض <output id="pWidthO">100</output> مم</label><input type="range" id="pWidth" min="20" max="200" value="100"></div>
+      <div class="field"><label for="pRes">الدقة</label>
+        <select id="pRes"><option value="0.3">سريعة 0.3مم</option><option value="0.2" selected>عالية 0.2مم</option><option value="0.15">فائقة 0.15مم</option><option value="0.1">قصوى 0.1مم (ملف كبير)</option></select></div>
+
+      <div class="grp" data-for="lithophane relief">
+        <div class="field"><label for="pContrast">التباين <output id="pContrastO">1.0</output></label><input type="range" id="pContrast" min="0.5" max="2.5" step="0.1" value="1"></div>
+        <div class="field"><label for="pSmooth">التنعيم <output id="pSmoothO">1</output></label><input type="range" id="pSmooth" min="0" max="5" value="1"></div>
+      </div>
+      <div class="grp row2" data-for="lithophane">
+        <div class="field"><label for="pMin">أقل سماكة</label><input type="number" id="pMin" value="0.8" step="0.1" min="0.4"></div>
+        <div class="field"><label for="pMax">أعلى سماكة</label><input type="number" id="pMax" value="3.2" step="0.1" min="1"></div>
+        <div class="field"><label for="pFrame">إطار (مم)</label><input type="number" id="pFrame" value="3" step="0.5" min="0"></div>
+      </div>
+      <div class="grp row2" data-for="relief">
+        <div class="field"><label for="pBase">القاعدة (مم)</label><input type="number" id="pBase" value="2" step="0.2" min="0.6"></div>
+        <div class="field"><label for="pRelief">عمق النقش (مم)</label><input type="number" id="pRelief" value="3" step="0.2" min="0.4"></div>
+      </div>
+      <div class="grp" data-for="keychain cookie">
+        <div class="field"><label for="pThresh">عتبة فصل الخلفية <output id="pThreshO">140</output></label><input type="range" id="pThresh" min="20" max="240" value="140"></div>
+      </div>
+      <div class="grp row2" data-for="keychain">
+        <div class="field"><label for="pKBase">سماكة (مم)</label><input type="number" id="pKBase" value="3" step="0.2"></div>
+        <div class="field"><label for="pKOut">حافة حول الشكل (مم)</label><input type="number" id="pKOut" value="1.5" step="0.5" min="0.5"></div>
+      </div>
+      <div class="grp row2" data-for="cookie">
+        <div class="field"><label for="pCH">ارتفاع القاطع</label><input type="number" id="pCH" value="14" step="1"></div>
+        <div class="field"><label for="pCW">سماكة الجدار</label><input type="number" id="pCW" value="1.2" step="0.2"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="pInvert"> عكس الألوان</label>
+    </aside>
+
+    <div class="stage">
+      <div class="viewer" id="pView">
+        <div class="vtools"><button class="icon-btn" id="pRot" title="تدوير تلقائي">⟳</button><button class="icon-btn" id="pLight" title="محاكاة إضاءة خلفية">💡</button></div>
+        <div class="empty" id="pEmpty">ارفع صورة لتظهر المعاينة هنا</div>
+        <div class="busy" id="pBusy" hidden>جارٍ التحويل…</div>
+      </div>
+      <div class="stats" id="pStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="pSTL" disabled>⬇ تحميل STL للصورة المحددة</button>
+        <button class="btn" id="pAll" disabled>📦 تحويل كل الصور ZIP</button>
+        <button class="btn wa" id="pWA" hidden>💬 اطلبها طباعة</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== AI ===================== -->
+<section id="ai" class="page">
+  <div class="workspace">
+    <aside class="panel">
+      <h2>مجسم كامل من عدة صور</h2>
+      <p class="hint">صوّر نفس الشيء (تمثال، لعبة، شخصية، منتج) من الأمام والجنب والخلف — حتى 4 صور — والذكاء الاصطناعي يبني مجسماً كاملاً 360°، ثم نضبط مقاسه بالمليمتر ونجهّزه STL.</p>
+      <label class="drop" id="aDrop">
+        <input type="file" id="aFiles" accept="image/*" multiple hidden>
+        <strong>ارفع 1–4 صور لنفس الشيء</strong>
+        <span>خلفية سادة وإضاءة جيدة = نتيجة أدق</span>
+      </label>
+      <div class="thumbs" id="aThumbs"></div>
+      <div class="field">
+        <label for="aKey">مفتاح Meshy API <a href="https://www.meshy.ai/api" target="_blank" rel="noopener">احصل عليه</a></label>
+        <input id="aKey" type="password" dir="ltr" placeholder="msy_..." autocomplete="off">
+        <small>يُحفظ في متصفحك فقط ويُرسل مباشرة لـ Meshy.</small>
+      </div>
+      <button class="btn primary wide" id="aGo">🧠 ابدأ التوليد</button>
+      <div class="progress" id="aProg" hidden><div></div><span></span></div>
+
+      <hr>
+      <div class="field">
+        <label for="aGLB">أو ارفع ملف GLB/GLTF جاهز (من أي موقع AI) لتحويله STL بمقاس دقيق</label>
+        <input type="file" id="aGLB" accept=".glb,.gltf">
+      </div>
+      <div class="row2">
+        <div class="field"><label for="aSize">المقاس (مم)</label><input type="number" id="aSize" value="80" min="5" max="400"></div>
+        <div class="field"><label for="aAxis">يُطبق على</label><select id="aAxis"><option value="auto">أكبر بُعد</option><option value="height">الارتفاع</option></select></div>
+      </div>
+    </aside>
+    <div class="stage">
+      <div class="viewer" id="aView"><div class="vtools"><button class="icon-btn" id="aRot" title="تدوير تلقائي">⟳</button></div><div class="empty" id="aEmpty">النتيجة تظهر هنا</div></div>
+      <div class="stats" id="aStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="aSTL" disabled>⬇ تحميل STL</button>
+        <button class="btn" id="aGLBdl" disabled>⬇ GLB الأصلي</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== الدليل ===================== -->
+<section id="guide" class="page">
+  <div class="guide">
+    <h2>دليل الطباعة السريع</h2>
+    <div class="gcards">
+      <article class="card"><h3>☕ الميداليات</h3><ul>
+        <li>ارتفاع الطبقة 0.12–0.16 مم للنصوص الصغيرة.</li>
+        <li>تعبئة 20–30٪، وجدران 3 خطوط لقوة الحلقة.</li>
+        <li>اطبعها مسطحة على وجهها الخلفي — بدون دعامات.</li>
+        <li>أقل ارتفاع حرف مقروء ≈ 4 مم وعرض خط ≥ 0.6 مم.</li></ul></article>
+      <article class="card"><h3>🎨 لونين بدون طابعة ملونة</h3><ul>
+        <li>القاعدة تنتهي على الارتفاع المذكور في الإحصائيات.</li>
+        <li>في السلايسر أضف «تغيير فلامنت / Pause» عند أول طبقة بعد هذا الارتفاع.</li>
+        <li>مع AMS أو MMU: حمّل ملف اللونين واستورد الجزأين كجسم واحد متعدد الأجزاء.</li></ul></article>
+      <article class="card"><h3>💡 الليثوفين</h3><ul>
+        <li>فلامنت أبيض PLA، تعبئة 100٪.</li>
+        <li>اطبعها واقفة (عمودية) لأفضل دقة.</li>
+        <li>ارتفاع طبقة 0.1–0.12 مم وسرعة منخفضة.</li></ul></article>
+      <article class="card"><h3>🍪 قوالب الكوكيز</h3><ul>
+        <li>استخدم PETG أو PLA مخصص للأغذية.</li>
+        <li>اغسلها يدوياً بماء فاتر — لا تستخدم غسالة الصحون.</li>
+        <li>الحافة العريضة تطبع للأسفل.</li></ul></article>
+      <article class="card"><h3>🧠 مجسمات AI</h3><ul>
+        <li>صور بخلفية سادة وزوايا مختلفة تعطي أفضل نتيجة.</li>
+        <li>افحص المجسم في السلايسر وفعّل «إصلاح الشبكة» إن لزم.</li>
+        <li>للتماثيل: دعامات شجرية Tree Supports.</li></ul></article>
+      <article class="card"><h3>📏 الدقة</h3><ul>
+        <li>«فائقة 0.1مم» تعطي حواف أنعم لكن الملف أكبر.</li>
+        <li>كل المقاسات بالمليمتر — الملف يفتح بالمقاس الصحيح مباشرة.</li>
+        <li>الملفات مغلقة (Watertight) وجاهزة لأي سلايسر.</li></ul></article>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <span>© <span id="year"></span> <span class="bn">طبعة 3D</span> — كل المعالجة داخل متصفحك.</span>
+</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
