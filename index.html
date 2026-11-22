@@ -34,6 +34,7 @@
     <button data-go="keychain">صمّم ميدالية</button>
     <button data-go="cup3d">🧊 مجسمات 3D</button>
     <button data-go="shapes">📦 من أبعادك</button>
+    <button data-go="boards">🔌 علب إلكترونيات</button>
     <button data-go="occasions">🎉 مناسبات</button>
     <button data-go="photo">صورة ← مجسم</button>
     <button data-go="ai">مجسم كامل AI</button>
@@ -69,6 +70,7 @@
   <div class="features">
     <article class="card" data-go="cup3d"><div class="ficon">🥤</div><h3>كوب 3D كامل</h3><p>ميدالية كوب مجسّم بغطاء وكم وحلقة — اختر لون كل قطعة واكتب اسمك أو حط شعارك على الكم.</p></article>
     <article class="card" data-go="shapes"><div class="ficon">📦</div><h3>مجسم من أبعادك</h3><p>اكتب الطول والعرض والارتفاع: صندوق، علبة بغطاء، أسطوانة، قلب… وانقش عليها صورتك أو اسمك.</p></article>
+    <article class="card" data-go="boards"><div class="ficon">🔌</div><h3>علب لوحات الإلكترونيات</h3><p>Arduino وRaspberry Pi وESP32: علبة بقواعد تثبيت وفتحات منافذ وغطاء وتهوية — أو بمقاسات لوحتك.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">☕</div><h3>8 أشكال قهوة</h3><p>تيك أواي، آيس، مج، حبة قهوة، دلة، فنجان عربي، V60، ومكينة إسبريسو — بالاسم أو بشعار الكوفي.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">🔁</div><h3>ميدالية بوجهين</h3><p>الاسم من قدام، وحساب الانستقرام أو QR من ورا بلون ثاني مدموج في الطبقة الأولى.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">🪧</div><h3>ستاند QR ومساند أكواب</h3><p>لوحة منيو للطاولة مع قاعدة تركيب، ومسند أكواب منقوش باسم الكوفي.</p></article>
@@ -341,6 +343,86 @@
         <button class="btn wa" id="shOrder">🛒 اطلبها طباعة</button>
       </div>
       <p class="hint">كل المقاسات بالمليمتر وتطبع كما هي. الغطاء يُطبع بجانب العلبة بوضعية التركيب (الحافة للأسفل) — جرّب مقاس الغطاء بطابعتك وعدّل «فراغ الغطاء» إذا كان ضيقاً أو واسعاً.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== علب الإلكترونيات ===================== -->
+<section id="boards" class="page">
+  <div class="workspace">
+    <aside class="panel">
+      <h2>🔌 علب لوحات الإلكترونيات</h2>
+      <p class="hint">اختر اللوحة (Arduino، Raspberry Pi، ESP32…) ونبني لك علبة بقواعد تثبيت وفتحات للمنافذ وغطاء — أو أدخل مقاسات لوحتك بنفسك.</p>
+      <div class="field"><label for="bdBoard">اللوحة</label><select id="bdBoard"></select></div>
+      <div class="row3">
+        <div class="field"><label for="bdW">طول اللوحة (مم)</label><input type="number" id="bdW" min="15" max="200" step="0.1"></div>
+        <div class="field"><label for="bdD">عرض اللوحة (مم)</label><input type="number" id="bdD" min="10" max="150" step="0.1"></div>
+        <div class="field"><label for="bdHead">الارتفاع فوق اللوحة (مم)</label><input type="number" id="bdHead" min="3" max="60" step="0.5"></div>
+      </div>
+
+      <label class="lbl">تثبيت اللوحة</label>
+      <div class="field"><label for="bdMount">طريقة التثبيت</label>
+        <select id="bdMount"><option value="holes">قواعد عند ثقوب اللوحة</option><option value="corners">وسادات بالأركان + موجّهات</option><option value="ends">وسادات بالطرفين + موجّهات (للوحات بدون ثقوب)</option></select></div>
+      <div class="row3">
+        <div class="field"><label for="bdSh">ارتفاع القاعدة (مم)</label><input type="number" id="bdSh" min="2" max="30" step="0.5"></div>
+        <div class="field bd-holes"><label for="bdHole">قطر الثقب (مم)</label><input type="number" id="bdHole" min="1.5" max="6" step="0.1"></div>
+        <div class="field bd-holes"><label for="bdStand">قطر القاعدة (مم)</label><input type="number" id="bdStand" value="6" min="4" max="12" step="0.5"></div>
+      </div>
+      <div class="bd-holes">
+        <label class="chk"><input type="checkbox" id="bdPin"> دبوس يدخل الثقب (بدل ثقب للبرغي)</label>
+        <div class="field"><label for="bdHoles">مواقع الثقوب (س,ص من الزاوية السفلية اليسرى — سطر لكل ثقب)</label><textarea id="bdHolesTxt" rows="3" dir="ltr" spellcheck="false"></textarea></div>
+      </div>
+
+      <label class="lbl">فتحات المنافذ</label>
+      <div id="bdPorts"></div>
+      <div class="row2">
+        <div class="field"><select id="bdAdd"></select></div>
+        <button class="btn small" id="bdAddBtn" type="button">➕ أضف فتحة</button>
+      </div>
+      <p class="hint">«الموضع» = المسافة بالمم من الزاوية اليسرى (أمامي/خلفي) أو من الحافة الأمامية (يمين/يسار). «ارتفاع» الفتحة يُقاس من سطح اللوحة.</p>
+
+      <label class="lbl">الجدران والغطاء</label>
+      <div class="row3">
+        <div class="field"><label for="bdWall">سماكة الجدار (مم)</label><input type="number" id="bdWall" value="2.4" min="1.6" max="6" step="0.2"></div>
+        <div class="field"><label for="bdClear">فراغ حول اللوحة (مم)</label><input type="number" id="bdClear" value="0.6" min="0.2" max="3" step="0.1"></div>
+        <div class="field"><label for="bdLidClr">فراغ الغطاء (مم)</label><input type="number" id="bdLidClr" value="0.3" min="0.1" max="0.8" step="0.1"></div>
+      </div>
+      <div class="row2">
+        <label class="chk"><input type="checkbox" id="bdLid" checked> غطاء</label>
+        <label class="chk"><input type="checkbox" id="bdEars"> آذان تثبيت بالجدار</label>
+      </div>
+      <div class="field"><label for="bdVents">التهوية</label>
+        <select id="bdVents"><option value="none">بدون</option><option value="lid">فتحات بالغطاء</option><option value="sides">فتحات بالجانبين</option><option value="both">الغطاء + الجانبين</option></select></div>
+
+      <label class="lbl">ملصق نصي</label>
+      <div class="field"><label for="bdLabel">النص (اسم المشروع)</label><input id="bdLabel" maxlength="24" placeholder="مثال: Weather Station"></div>
+      <div class="row2">
+        <div class="field"><label for="bdLabelOn">مكانه</label><select id="bdLabelOn"><option value="front">الواجهة الأمامية</option><option value="lid">الغطاء</option></select></div>
+        <div class="field"><label for="bdFont">الخط</label><select id="bdFont"><option>Cairo</option><option>Tajawal</option><option>Reem Kufi</option><option>Changa</option></select></div>
+      </div>
+      <label class="lbl">الألوان</label>
+      <div class="colors5" id="bdColors">
+        <label><input type="color" data-k="body" value="#37404a"><span>العلبة</span></label>
+        <label><input type="color" data-k="lid" value="#d4a017"><span>الغطاء</span></label>
+        <label><input type="color" data-k="deco" value="#ffffff"><span>النص</span></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="bdPcb" checked> أظهر اللوحة داخل العلبة (للمعاينة فقط)</label>
+    </aside>
+    <div class="stage">
+      <div class="viewer" id="bdView">
+        <div class="vtools"><button class="icon-btn" id="bdUndo" title="تراجع (Ctrl+Z)" disabled>↶</button><button class="icon-btn" id="bdRedo" title="إعادة (Ctrl+Y)" disabled>↷</button><button class="icon-btn" id="bdCmp" title="مقارنة الحجم">📏</button><button class="icon-btn on" id="bdRot" title="تدوير تلقائي">⟳</button></div>
+        <div class="busy" id="bdBusy" hidden>جارٍ التوليد…</div>
+      </div>
+      <div class="warn" id="bdWarn" hidden></div>
+      <div class="stats" id="bdStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="bdSTL">⬇ STL</button>
+        <button class="btn" id="bd3MF">🎨 3MF ملوّن</button>
+        <button class="btn" id="bdZip">ملف لكل جزء ZIP</button>
+        <button class="btn" id="bdPNG">📷 صورة</button>
+        <button class="btn wa" id="bdOrder">🛒 اطلبها طباعة</button>
+      </div>
+      <p class="hint">⚠️ مقاسات اللوحات ومواقع الثقوب والمنافذ مأخوذة من المواصفات المعروفة وهي تقريبية — قِس لوحتك بالمسطرة وعدّل الأرقام قبل الطباعة، واطبع أول نسخة بسرعة للتجربة. اللوحة الخضراء للمعاينة فقط ولا تُطبع.</p>
     </div>
   </div>
 </section>

@@ -96,7 +96,7 @@ function faceField(P, Wd, Hd) {
 }
 
 /** يضع حقل النقش على وجه. place(lx, ly, t) → [X,Y,Z] */
-function deco(P, Wd, Hd, place) {
+export function deco(P, Wd, Hd, place) {
   if (Wd < 4 || Hd < 4) return null;
   const F = faceField(P, Wd, Hd); if (!F) return null;
   const flat = maskedSlab(F.z, F.mask, F.w, F.h, F.px), W0 = ((F.w - 1) * F.px) / 2, H0 = ((F.h - 1) * F.px) / 2;

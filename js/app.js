@@ -6,6 +6,7 @@ import { lithophane, relief, faceRelief, cookieCutter, removeBackground } from '
 import { export3MF, arrange, bedOutline, BEDS } from './export.js';
 import { buildCup, buildModel, MODELS } from './cup3d.js';
 import { buildShape, SHAPES } from './shapes.js';
+import { buildBoard, BOARDS, PORT_TYPES, newPort } from './boards.js';
 import { setLang } from './i18n.js';
 import { modal, openAR, storyImage, STORY_STYLES, designURL, shareLink, parseHash } from './extras.js';
 import * as AI from './ai.js';
@@ -84,6 +85,7 @@ function go(id, push = true) {
   if (id === 'keychain') K.ensure();
   if (id === 'cup3d') C3.ensure();
   if (id === 'shapes') SH.ensure();
+  if (id === 'boards') BD.ensure();
   if (id === 'order') O.render();
   if (id === 'gallery') G.load();
   if (id === 'occasions') G.load('gallery/occasions.json', '#occGrid');
@@ -95,7 +97,7 @@ document.addEventListener('click', (e) => {
 
 /* ================= تراجع / إعادة ================= */
 const hist = {
-  S: { k: { past: [], future: [], cur: null, lock: false }, c: { past: [], future: [], cur: null, lock: false }, s: { past: [], future: [], cur: null, lock: false } },
+  S: { k: { past: [], future: [], cur: null, lock: false }, c: { past: [], future: [], cur: null, lock: false }, s: { past: [], future: [], cur: null, lock: false }, b: { past: [], future: [], cur: null, lock: false } },
   snap(P) { const o = { ...P }; delete o.logoStencil; delete o.logoShape; delete o.photo; return JSON.stringify(o); },
   push(ns, P) {
     const S = this.S[ns], v = this.snap(P);
@@ -109,20 +111,20 @@ const hist = {
     if (!from.length) return;
     to.push(S.cur); S.cur = from.pop(); S.lock = true;
     const P = JSON.parse(S.cur);
-    if (ns === 'k') { K.write({ ...P, logoStencil: K.logoStencil }); K.update(); } else if (ns === 's') { SH.write(P); SH.update(); } else { C3.write(P); C3.update(); }
+    if (ns === 'k') { K.write({ ...P, logoStencil: K.logoStencil }); K.update(); } else if (ns === 's') { SH.write(P); SH.update(); } else if (ns === 'b') { BD.write(P); BD.update(); } else { C3.write(P); C3.update(); }
     this.ui();
   },
   ui() {
-    for (const ns of ['k', 'c', 's']) {
+    for (const ns of ['k', 'c', 's', 'b']) {
       const S = this.S[ns];
-      const u = document.getElementById((ns === 's' ? 'sh' : ns) + 'Undo'), r = document.getElementById((ns === 's' ? 'sh' : ns) + 'Redo');
+      const u = document.getElementById(({ s: 'sh', b: 'bd' }[ns] || ns) + 'Undo'), r = document.getElementById(({ s: 'sh', b: 'bd' }[ns] || ns) + 'Redo');
       if (u) u.disabled = !S.past.length; if (r) r.disabled = !S.future.length;
     }
   },
 };
 document.addEventListener('keydown', (e) => {
   if (!(e.ctrlKey || e.metaKey) || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
-  const ns = $('#keychain').classList.contains('active') ? 'k' : $('#cup3d').classList.contains('active') ? 'c' : $('#shapes').classList.contains('active') ? 's' : null;
+  const ns = $('#keychain').classList.contains('active') ? 'k' : $('#cup3d').classList.contains('active') ? 'c' : $('#shapes').classList.contains('active') ? 's' : $('#boards').classList.contains('active') ? 'b' : null;
   if (!ns) return;
   const k = e.key.toLowerCase();
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); hist.go(ns, -1); }
@@ -809,6 +811,125 @@ $('#shPNG').onclick = () => fetch(SH.view.snapshot()).then((r) => r.blob()).then
 $('#shAR').onclick = () => { if (SH.parts) openAR(SH.parts, { title: SH.P.text1 || '' }); };
 $('#shOrder').onclick = () => { O.source = 'shape'; go('order'); };
 
+/* ================= علب الإلكترونيات ================= */
+const BD = {
+  view: null, parts: null, B: null, busy: false, pending: false, ports: [], key: store.get('b_board', 'uno'),
+  colorsBy: store.get('b_colors', {}),
+  ensure() { if (!this.view) { this.view = new Viewer($('#bdView')); this.view.autoRotate = true; this.update(); } },
+  num(id, lo, hi, def) { const v = parseFloat($('#' + id).value); return Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : def)); },
+  colors() { const o = {}; $$('#bdColors input').forEach((e) => (o[e.dataset.k] = e.value)); return o; },
+  holes() { return $('#bdHolesTxt').value.split('\n').map((l) => l.split(/[,\s]+/).map(parseFloat)).filter((a) => a.length >= 2 && a.every(Number.isFinite)).map((a) => [a[0], a[1]]); },
+  read() {
+    return {
+      key: this.key, w: this.num('bdW', 15, 200, 68.6), d: this.num('bdD', 10, 150, 53.3), head: this.num('bdHead', 3, 60, 14), mount: $('#bdMount').value,
+      sh: this.num('bdSh', 2, 30, 5), hole: this.num('bdHole', 1.5, 6, 3.2), stand: this.num('bdStand', 4, 12, 6), pin: $('#bdPin').checked, holes: this.holes(),
+      ports: this.ports.map((p) => ({ ...p })), wall: this.num('bdWall', 1.6, 6, 2.4), clear: this.num('bdClear', 0.2, 3, 0.6), lidClear: this.num('bdLidClr', 0.1, 0.8, 0.3),
+      lid: $('#bdLid').checked, ears: $('#bdEars').checked, vents: $('#bdVents').value, label: $('#bdLabel').value.trim(), labelOn: $('#bdLabelOn').value, font: $('#bdFont').value,
+      showPcb: $('#bdPcb').checked, colors: this.colors(),
+    };
+  },
+  write(P) {
+    const set = (id, v) => { const e = $(id); if (e && v != null) e.type === 'checkbox' ? (e.checked = !!v) : (e.value = v); };
+    if (P.key) this.key = P.key; $('#bdBoard').value = this.key;
+    set('#bdW', P.w); set('#bdD', P.d); set('#bdHead', P.head); set('#bdMount', P.mount); set('#bdSh', P.sh); set('#bdHole', P.hole); set('#bdStand', P.stand); set('#bdPin', P.pin);
+    if (P.holes) $('#bdHolesTxt').value = P.holes.map((h) => h.join(', ')).join('\n');
+    if (P.ports) { this.ports = P.ports.map((p) => ({ ...p })); this.renderPorts(); }
+    set('#bdWall', P.wall); set('#bdClear', P.clear); set('#bdLidClr', P.lidClear); set('#bdLid', P.lid); set('#bdEars', P.ears); set('#bdVents', P.vents);
+    set('#bdLabel', P.label); set('#bdLabelOn', P.labelOn); set('#bdFont', P.font); set('#bdPcb', P.showPcb);
+    if (P.colors) $$('#bdColors input').forEach((e) => { if (P.colors[e.dataset.k]) e.value = P.colors[e.dataset.k]; });
+    this.sync();
+  },
+  preset(key, upd = true) {
+    const b = BOARDS[key] || BOARDS.uno; this.key = BOARDS[key] ? key : 'uno'; store.set('b_board', this.key);
+    this.write({ key: this.key, w: b.w, d: b.d, head: b.head, mount: b.mount, sh: b.sh, hole: b.hole, holes: b.holes, ports: b.ports });
+    if (upd) this.update();
+  },
+  sync() { $$('.bd-holes').forEach((e) => (e.hidden = $('#bdMount').value !== 'holes')); },
+  renderPorts() {
+    const W = [['left', 'يسار'], ['right', 'يمين'], ['front', 'أمامي'], ['back', 'خلفي']];
+    $('#bdPorts').innerHTML = this.ports.map((p, i) => `<div class="port" data-i="${i}">
+      <div class="p-head"><select data-f="type">${Object.entries(PORT_TYPES).map(([k, v]) => `<option value="${k}"${k === p.type ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>
+      <select data-f="wall">${W.map(([k, n]) => `<option value="${k}"${k === p.wall ? ' selected' : ''}>${n}</option>`).join('')}</select>
+      <button type="button" data-rm aria-label="حذف">✕</button></div>
+      <label>الموضع<input type="number" data-f="pos" value="${p.pos}" step="0.1"></label>
+      <label>العرض<input type="number" data-f="w" value="${p.w}" step="0.5" min="1"></label>
+      <label>الارتفاع<input type="number" data-f="h" value="${p.h}" step="0.5" min="1"></label>
+      <label>الإزاحة<input type="number" data-f="z" value="${p.z}" step="0.1"></label></div>`).join('') || '<p class="hint">ما فيه فتحات — أضف منفذاً من القائمة تحت.</p>';
+  },
+  async update() {
+    if (!this.view) return;
+    if (this.busy) { this.pending = true; return; }
+    this.busy = true; $('#bdBusy').hidden = false; await nextFrame();
+    try {
+      const B = this.read();
+      if (B.label) { try { await document.fonts.load(`800 40px "${B.font}"`, B.label); } catch {} }
+      const first = !this.parts, out = buildBoard(B);
+      const defs = { body: '#37404a', lid: '#d4a017', deco: '#ffffff', pcb: '#1c7a3a' };
+      this.parts = out.parts.map((p) => ({ ...p, name: PART_NAMES[p.key] || p.key, color: p.key === 'pcb' ? defs.pcb : B.colors[p.key] || defs[p.key] }));
+      this.B = B; this.dims = out.dims;
+      const key = B.key + B.w + B.d + B.head + B.lid;
+      this.view.show(this.parts, { keepView: !first && this.lastKey === key });
+      if (first || this.lastKey !== key) {
+        const s = Math.max(out.dims.ow, out.dims.od, out.dims.H) * (B.lid ? 1.7 : 1);
+        this.view.camera.position.set(s * 0.6, -s * 1.5, s * 1.1); this.view.controls.target.set(B.lid ? out.dims.ow * 0.5 : 0, 0, out.dims.H * 0.3); this.view.dirty = true;
+      }
+      this.lastKey = key;
+      hist.push('b', B);
+      this.stats = costStats(mergeTris(this.printable().map((p) => p.tris)));
+      $('#bdStats').innerHTML = this.stats.html;
+      const w = [];
+      B.ports.forEach((p) => { const L = p.wall === 'front' || p.wall === 'back' ? B.w : B.d; if (p.pos - p.w / 2 < -0.5 || p.pos + p.w / 2 > L + 0.5) w.push(`فتحة ${PORT_TYPES[p.type]?.[0] || ''} خارج حدود اللوحة — راجع «الموضع».`); });
+      if (B.mount === 'holes' && !B.holes.length) w.push('ما فيه ثقوب تثبيت — أضف مواقع الثقوب أو غيّر طريقة التثبيت.');
+      if (B.lid && this.stats.box[0] > 256) w.push('العلبة مع الغطاء أعرض من أغلب البلاطات (256 مم) — اطبعهم كل واحد لوحده.');
+      if (B.label && B.labelOn === 'lid' && ['lid', 'both'].includes(B.vents)) w.push('النص على الغطاء قد يتداخل مع فتحات التهوية — انقله للواجهة الأمامية.');
+      if (B.key === 'esp32' || B.key === 'nano') w.push('الدبابيس اللحام تحت اللوحة تحتاج قاعدة ≥ 8 مم — تأكد من «ارتفاع القاعدة».');
+      if (B.lid) w.push('الغطاء مطبوع بوضعية التركيب (الحافة للأسفل) — اقلبه عند الطباعة أو استخدم دعامات خفيفة.');
+      $('#bdWarn').hidden = !w.length; $('#bdWarn').innerHTML = w.map((x) => '⚠️ ' + x).join('<br>');
+    } catch (e) { console.error(e); toast('تعذر توليد العلبة: ' + e.message); }
+    finally { this.busy = false; $('#bdBusy').hidden = true; if (this.pending) { this.pending = false; this.update(); } }
+  },
+  printable() { return (this.parts || []).filter((p) => !p.preview); },
+  recolor() {
+    const c = this.colors(); store.set('b_colors', c);
+    if (this.parts) this.parts.forEach((p, i) => { if (c[p.key]) { p.color = c[p.key]; this.view.group.children[i]?.material.color.set(c[p.key]); } });
+    if (this.B) this.B.colors = c;
+    if (this.view) this.view.dirty = true;
+  },
+  base() { return `${(this.B?.key || 'board')}_case`; },
+};
+PART_NAMES.pcb = 'اللوحة (معاينة)';
+$('#bdBoard').innerHTML = Object.entries(BOARDS).map(([k, b]) => `<option value="${k}">${b.n}</option>`).join('');
+$('#bdAdd').innerHTML = Object.entries(PORT_TYPES).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('');
+if (store.get('b_colors', null)) $$('#bdColors input').forEach((e) => { const c = BD.colorsBy[e.dataset.k]; if (c) e.value = c; });
+BD.preset(BD.key, false); $('#bdBoard').value = BD.key;
+$('#bdBoard').addEventListener('change', (e) => BD.preset(e.target.value));
+const bdUpd = debounce(() => BD.update(), 350);
+$$('#boards .panel input, #boards .panel select, #boards .panel textarea').forEach((el) => {
+  if (el.type === 'color' || el.id === 'bdBoard' || el.id === 'bdAdd') return;
+  el.addEventListener('input', () => { if (el.id === 'bdMount') BD.sync(); bdUpd(); });
+});
+$('#bdColors').addEventListener('input', () => BD.recolor());
+$('#bdAddBtn').onclick = () => { BD.ports.push(newPort($('#bdAdd').value)); BD.renderPorts(); BD.update(); };
+$('#bdPorts').addEventListener('click', (e) => { const rm = e.target.closest('[data-rm]'); if (!rm) return; BD.ports.splice(+rm.closest('.port').dataset.i, 1); BD.renderPorts(); BD.update(); });
+$('#bdPorts').addEventListener('change', (e) => {
+  const row = e.target.closest('.port'); if (!row) return; const p = BD.ports[+row.dataset.i], f = e.target.dataset.f;
+  if (f === 'type' || f === 'wall') p[f] = e.target.value; else p[f] = parseFloat(e.target.value) || 0;
+  if (f === 'type') { const t = PORT_TYPES[p.type]; p.w = t[1]; p.h = t[2]; p.z = t[3]; BD.renderPorts(); }
+  BD.update();
+});
+$('#bdRot').onclick = (e) => { BD.view.autoRotate = !BD.view.autoRotate; e.currentTarget.classList.toggle('on', BD.view.autoRotate); };
+$('#bdCmp').onclick = (e) => { const on = BD.view.toggleRef(); e.currentTarget.classList.toggle('on', on); if (on) toast('📏 بطاقة بنكية بمقاسها الحقيقي 85×54 مم للمقارنة'); };
+$('#bdUndo').onclick = () => hist.go('b', -1); $('#bdRedo').onclick = () => hist.go('b', 1);
+$('#bd3MF').onclick = async () => { if (!BD.parts) return; download(await export3MF([{ name: BD.base(), parts: BD.printable() }]), BD.base() + '.3mf'); toast('3MF ملوّن جاهز ✓'); };
+$('#bdSTL').onclick = () => { if (BD.parts) download(toSTL(mergeTris(BD.printable().map((p) => p.tris)), 'case'), BD.base() + '.stl'); };
+$('#bdZip').onclick = async () => {
+  if (!BD.parts) return;
+  const zip = new JSZip(); BD.printable().forEach((p, i) => zip.file(`${i + 1}_${p.key}_${p.color.slice(1)}.stl`, toSTL(p.tris, p.key)));
+  download(await zip.generateAsync({ type: 'blob' }), BD.base() + '_parts.zip');
+};
+$('#bdPNG').onclick = () => fetch(BD.view.snapshot()).then((r) => r.blob()).then((b) => download(b, BD.base() + '.png'));
+$('#bdOrder').onclick = () => { O.source = 'board'; go('order'); };
+
 /* ================= الطلب ================= */
 const MODE_LABEL = { lithophane: 'ليثوفين', relief: 'نقش بارز', face: 'نقش وجه', keychain: 'ميدالية من صورة', cookie: 'قالب كوكيز' };
 const O = {
@@ -845,6 +966,20 @@ const O = {
         files: async () => [[SH.base() + '.3mf', await export3MF([{ name: SH.base(), parts: SH.parts }])], [SH.base() + '.stl', toSTL(mergeTris(SH.parts.map((p) => p.tris)))]],
       };
     }
+    if (this.source === 'board' && BD.parts) {
+      const B = BD.B, names = PART_NAMES, pr = BD.printable();
+      return {
+        title: `علبة ${BOARDS[B.key]?.n || 'لوحة'}`, unit: BD.stats.price,
+        rows: [
+          ['اللوحة', BOARDS[B.key]?.n || 'مخصصة'], ['مقاس اللوحة', `${B.w} × ${B.d} مم`], ['مقاس العلبة', BD.stats.box.map((v) => fmt(v)).join(' × ') + ' مم'],
+          ['الفتحات', B.ports.map((p) => PORT_TYPES[p.type][0]).join(', ') || '—'], ['الغطاء', B.lid ? 'نعم' : 'لا'], ['الكتابة', B.label || '—'],
+          ['الألوان', pr.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
+        ],
+        colorsText: pr.map((p) => `${names[p.key]} ${p.color}`).join('، '),
+        snap: () => BD.view.snapshot(),
+        files: async () => [[BD.base() + '.3mf', await export3MF([{ name: BD.base(), parts: pr }])], [BD.base() + '.stl', toSTL(mergeTris(pr.map((p) => p.tris)))]],
+      };
+    }
     if (this.source === 'photo' && PH.last) {
       return {
         title: `${MODE_LABEL[PH.last.mode]} من صورة`, unit: PH.last.stats.price,
@@ -870,6 +1005,7 @@ const O = {
   },
   async render() {
     if (this.source === 'cup3d' && !C3.parts) { C3.ensure(); await new Promise((r) => setTimeout(r, 1500)); }
+    if (this.source === 'board' && !BD.parts) { BD.ensure(); await new Promise((r) => setTimeout(r, 1500)); }
     if (this.source === 'shape' && !SH.parts) { SH.ensure(); await new Promise((r) => setTimeout(r, 1500)); }
     if (this.source === 'keychain') {
       if (!K.view) { K.ensure(); await new Promise((r) => setTimeout(r, 900)); }

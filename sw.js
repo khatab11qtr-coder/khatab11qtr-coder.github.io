@@ -1,5 +1,5 @@
 // خدمة العمل بدون إنترنت: الشبكة أولاً للصفحات والكود، والكاش أولاً للمكتبات الثقيلة
-const CACHE = 'tab3a-v7';
+const CACHE = 'tab3a-v8';
 const CORE = ['./', 'index.html', 'css/style.css', 'manifest.webmanifest', 'icons/icon-192.png',
   'js/app.js', 'js/config.js', 'js/viewer.js', 'js/mesh.js', 'js/contour.js', 'js/keychain.js', 'js/photo.js', 'js/ai.js', 'js/export.js', 'js/cup3d.js', 'js/extras.js', 'js/i18n.js', 'js/worker.js',
   'vendor/three/three.module.min.js', 'vendor/three/addons/controls/OrbitControls.js', 'vendor/earcut.js', 'vendor/jszip.min.js', 'vendor/qrcode.js'];

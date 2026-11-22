@@ -309,3 +309,11 @@ body.mod-takeaway .m-sleeve { display: flex; }
 .chip { font: inherit; font-size: .82rem; padding: 6px 10px; border-radius: 999px; border: 1px solid #8884; background: transparent; color: inherit; cursor: pointer; }
 .chip:hover { border-color: var(--accent); }
 #shShapes { grid-template-columns: repeat(3, 1fr); }
+
+.port { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 6px; margin-bottom: 10px; padding: 8px; border: 1px solid #8883; border-radius: 10px; }
+.port .p-head { grid-column: 1 / -1; display: flex; gap: 6px; }
+.port .p-head select { flex: 1; min-width: 0; }
+.port label { font-size: .72rem; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.port input, .port select { min-width: 0; padding: 6px 6px; font-size: .85rem; width: 100%; }
+.port button { border: 0; background: transparent; color: inherit; cursor: pointer; opacity: .6; font-size: 1rem; }
+#bdHolesTxt { width: 100%; font-family: monospace; }
