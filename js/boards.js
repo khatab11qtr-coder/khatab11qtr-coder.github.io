@@ -4,6 +4,7 @@ import { mergeTris } from './mesh.js';
 import { revolve, box, orient } from './cup3d.js';
 import { deco } from './shapes.js';
 import { plate, cut, mapT } from './plate.js';
+import { TOL } from './tol.js';
 
 /** منافذ شائعة: [العرض، الارتفاع، الإزاحة الرأسية عن سطح اللوحة] مع هامش للقابس */
 export const PORT_TYPES = {
@@ -45,17 +46,17 @@ export function buildBoard(B) {
   // المنافذ والتهوية
   const holes = { front: [], back: [], left: [], right: [] }, circ = { front: [], back: [], left: [], right: [] }, lidRects = [], lidCircs = [];
   for (const p of B.ports) {
-    if (p.wall === 'lid') { const u = T + cx + p.pos, v = T + cy + p.z; if (B.lid) (p.round ? lidCircs.push([u, v, p.w / 2]) : lidRects.push([u, v, p.w, p.h])); continue; }
+    if (p.wall === 'lid') { const u = T + cx + p.pos, v = T + cy + p.z; if (B.lid) (p.round ? lidCircs.push([u, v, (p.w + TOL.hole) / 2]) : lidRects.push([u, v, p.w + TOL.hole, p.h + TOL.hole])); continue; }
     if (!holes[p.wall]) continue;
     const along = p.wall === 'back' ? ow - (T + cx + p.pos) : p.wall === 'front' ? T + cx + p.pos : T + cy + p.pos; // pos يُقاس من حافة اللوحة اليسرى (أمامي/خلفي) أو الأمامية (يمين/يسار)
     const zc = Math.min(H - 1.5, Math.max(T + 1.2, zPcb + p.z + p.h / 2));
-    if (p.round) circ[p.wall].push([along, zc, p.w / 2]); else holes[p.wall].push([along, zc, p.w, Math.min(p.h, H - 1 - (zc - p.h / 2))]);
+    if (p.round) circ[p.wall].push([along, zc, (p.w + TOL.hole) / 2]); else holes[p.wall].push([along, zc, p.w + TOL.hole, Math.min(p.h + TOL.hole, H - 1 - (zc - p.h / 2))]);
   }
   if (B.vents === 'sides' || B.vents === 'both') {
     const n = Math.max(1, Math.min(14, Math.floor((id - 8) / 5))), zc = T + ih * 0.55;
     for (const w of ['left', 'right']) for (let i = 0; i < n; i++) holes[w].push([T + ((i + 0.5) * id) / n, zc, 2.2, ih * 0.45]);
   }
-  if (snap) for (const w of ['front', 'back']) holes[w].push([ow / 2, H - 2.15, 10, 2.5]);
+  if (snap) for (const w of ['front', 'back']) holes[w].push([ow / 2, H - 2.15, 10 + TOL.hole, 2.5 + TOL.hole]);
   const wallPlate = (L, list, cl = []) => plate(L, H, T + ov, (x) => { x.fillRect(0, 0, L, H); cut(x, list, cl); });
   const long = ow, short = id; // الأمامي/الخلفي بطول ow الكامل، واليمين/اليسار بين الاثنين
   body.push(mapT(wallPlate(long, holes.front, circ.front), (u, v, t) => [u - ow / 2, -id / 2 - T + t, v]));
@@ -66,11 +67,11 @@ export function buildBoard(B) {
   // قواعد التثبيت
   const bx0 = -B.w / 2, by0 = -B.d / 2;
   if (B.mount === 'holes') {
-    const rin = B.hole / 2 - 0.45, rout = Math.max(B.stand / 2, B.hole / 2 + 1.2);
+    const rin = B.hole / 2 - 0.45 + TOL.hole / 2, pinR = B.hole / 2 - 0.2 - TOL.pin / 2, rout = Math.max(B.stand / 2, B.hole / 2 + 1.2);
     for (const [hx, hy] of B.holes) {
       const cx = bx0 + hx, cy = by0 + hy;
       let t;
-      if (B.pin) t = revolve([[0, T - 0.05], [rout, T - 0.05], [rout, T + sh], [B.hole / 2 - 0.2, T + sh], [B.hole / 2 - 0.2, T + sh + pcb + 0.8], [0, T + sh + pcb + 0.8]], 40);
+      if (B.pin) t = revolve([[0, T - 0.05], [rout, T - 0.05], [rout, T + sh], [pinR, T + sh], [pinR, T + sh + pcb + 0.8], [0, T + sh + pcb + 0.8]], 40);
       else t = revolve([[rin, T - 0.05], [rout, T - 0.05], [rout, T + sh], [rin, T + sh]], 40, true);
       body.push(shift(t, cx, cy));
     }
@@ -88,7 +89,7 @@ export function buildBoard(B) {
     }
   }
   if (screws) { // أعمدة البراغي بالزوايا الأربع (ثقب توجيه للبرغي)
-    for (const sx of [-1, 1]) for (const sy of [-1, 1]) body.push(shift(revolve([[scr * 0.42, T - 0.05], [OD / 2, T - 0.05], [OD / 2, H], [scr * 0.42, H]], 40, true), sx * (iw / 2 - OD / 2 + 0.05), sy * (id / 2 - OD / 2 + 0.05)));
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) body.push(shift(revolve([[scr * 0.42 + TOL.hole / 2, T - 0.05], [OD / 2, T - 0.05], [OD / 2, H], [scr * 0.42 + TOL.hole / 2, H]], 40, true), sx * (iw / 2 - OD / 2 + 0.05), sy * (id / 2 - OD / 2 + 0.05)));
   }
   // ملصق نصي على الواجهة الأمامية
   const decos = [];
@@ -99,14 +100,14 @@ export function buildBoard(B) {
   parts.push({ key: 'body', tris: mergeTris(body) });
   // الغطاء (بحافة تدخل داخل العلبة) بجانب العلبة
   if (B.lid) {
-    const lc = B.lidClear, lipH = 3, plateT = 2.4, ox = ow / 2 + 10 + ow / 2 + ear, lw = iw - 2 * lc, ld = id - 2 * lc, lt = 1.6;
+    const lc = B.lidClear + TOL.lid, lipH = 3, plateT = 2.4, ox = ow / 2 + 10 + ow / 2 + ear, lw = iw - 2 * lc, ld = id - 2 * lc, lt = 1.6;
     const ns = OD + 0.8, lip = plate(lw, ld, lipH + 0.02, (x) => { x.fillRect(0, 0, lw, ld); x.globalCompositeOperation = 'destination-out'; x.fillRect(lt, lt, lw - 2 * lt, ld - 2 * lt); if (screws) for (const [a, b2] of [[0, 0], [lw - ns, 0], [0, ld - ns], [lw - ns, ld - ns]]) x.fillRect(a, b2, ns, ns); x.globalCompositeOperation = 'source-over'; });
     const vents = [];
     if (B.vents === 'lid' || B.vents === 'both') {
       const n = Math.max(1, Math.floor((iw - 8) / 5));
       for (let i = 0; i < n; i++) vents.push([ow / 2 - ((n - 1) * 5) / 2 + i * 5, od / 2, 2.2, Math.max(8, id * 0.55)]);
     }
-    const sholes = screws ? [-1, 1].flatMap((sx) => [-1, 1].map((sy) => [ow / 2 + sx * (iw / 2 - OD / 2), od / 2 + sy * (id / 2 - OD / 2), (scr + 0.5) / 2])) : [];
+    const sholes = screws ? [-1, 1].flatMap((sx) => [-1, 1].map((sy) => [ow / 2 + sx * (iw / 2 - OD / 2), od / 2 + sy * (id / 2 - OD / 2), (scr + 0.5 + TOL.hole) / 2])) : [];
     const top = plate(ow, od, plateT, (x) => { x.fillRect(0, 0, ow, od); cut(x, [...vents, ...lidRects], [...sholes, ...lidCircs]); });
     const lidParts = [mapT(lip, (u, v, t) => [u - lw / 2 + ox, v - ld / 2, t]), mapT(top, (u, v, t) => [u - ow / 2 + ox, v - od / 2, lipH + t])];
     if (snap) { // خطاطيف على الوجه الأمامي والخلفي للحافة: قمة مسطحة وانحدار سفلي

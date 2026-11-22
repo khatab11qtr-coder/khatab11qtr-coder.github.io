@@ -5,6 +5,7 @@ import { fieldToSolid } from './contour.js';
 import { grayscale } from './photo.js';
 import { revolve, torus, box, orient, decoField } from './cup3d.js';
 import { plate, mapT } from './plate.js';
+import { TOL } from './tol.js';
 
 export const SHAPES = {
   box: { label: 'صندوق', icon: '📦', flat: true, hollow: true },
@@ -110,7 +111,7 @@ export function deco(P, Wd, Hd, place) {
 
 export function buildShape(P) {
   const { shape, w, d, h } = P, S = SHAPES[shape], parts = [];
-  const hollow = S.hollow && P.hollow, lid = hollow && P.lid, T = P.wall, clr = P.clearance;
+  const hollow = S.hollow && P.hollow, lid = hollow && P.lid, T = P.wall, clr = P.clearance + TOL.lid;
   const px = Math.max(0.18, Math.max(w, d) / 450);
   let body, lidT = null, lipH = 0, lidZ0 = 0, lidX = 0;
   const bodyParts = [];
@@ -142,14 +143,14 @@ export function buildShape(P) {
       };
       bodyParts.push(solid(F, F.f, 0, T));
       if (snap) { // نوافذ بالجدار الأمامي والخلفي ليدخل فيها خطاف الغطاء
-        const wz1 = h - lipHh + 2.1, wz0 = wz1 - 2.5, mid = ring.slice();
-        for (const sg of [-1, 1]) carveR(mid, -5, sg < 0 ? -d / 2 - 1 : d / 2 - T - 0.8, 5, sg < 0 ? -d / 2 + T + 0.8 : d / 2 + 1);
+        const wz1 = h - lipHh + 2.1, wz0 = wz1 - 2.5 - TOL.hole, mid = ring.slice();
+        for (const sg of [-1, 1]) carveR(mid, -5 - TOL.hole / 2, sg < 0 ? -d / 2 - 1 : d / 2 - T - 0.8, 5 + TOL.hole / 2, sg < 0 ? -d / 2 + T + 0.8 : d / 2 + 1);
         bodyParts.push(solid(F, ring, T - 0.02, wz0 + 0.02), solid(F, mid, wz0, wz1 + 0.02), solid(F, ring, wz1, h));
       } else bodyParts.push(solid(F, ring, T - 0.02, h));
-      for (const [px0, py0] of posts) bodyParts.push(revolve([[scr * 0.42, T - 0.05], [r, T - 0.05], [r, h], [scr * 0.42, h]], 40, true).map((v, k) => v + (k % 3 === 0 ? px0 : k % 3 === 1 ? py0 : 0)));
+      for (const [px0, py0] of posts) bodyParts.push(revolve([[scr * 0.42 + TOL.hole / 2, T - 0.05], [r, T - 0.05], [r, h], [scr * 0.42 + TOL.hole / 2, h]], 40, true).map((v, k) => v + (k % 3 === 0 ? px0 : k % 3 === 1 ? py0 : 0)));
       if (lid) {
         const lip = erode(F.f, F.cw, F.ch, px, T + clr), plateF = F.f.slice(); lipH = lipHh;
-        for (const [px0, py0] of posts) { carveC(lip, px0, py0, r + 0.5); carveC(plateF, px0, py0, (scr + 0.5) / 2); }
+        for (const [px0, py0] of posts) { carveC(lip, px0, py0, r + 0.5); carveC(plateF, px0, py0, (scr + 0.5 + TOL.hole) / 2); }
         const lidPlate = 2.4, ox = w / 2 + 8 + w / 2;
         const lidParts = [solid(F, lip, 0, lipH + 0.02), solid(F, plateF, lipH, lipH + lidPlate)];
         if (snap) {

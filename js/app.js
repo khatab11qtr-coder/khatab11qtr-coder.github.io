@@ -7,6 +7,8 @@ import { export3MF, arrange, bedOutline, BEDS } from './export.js';
 import { buildCup, buildModel, MODELS } from './cup3d.js';
 import { buildShape, SHAPES } from './shapes.js';
 import { buildBoard, BOARDS, PORT_TYPES, newPort } from './boards.js';
+import { TOL, setTol } from './tol.js';
+import { plate, cut } from './plate.js';
 import { setLang } from './i18n.js';
 import { modal, openAR, storyImage, STORY_STYLES, designURL, shareLink, parseHash } from './extras.js';
 import * as AI from './ai.js';
@@ -1062,6 +1064,67 @@ $('#shPresets').addEventListener('click', (e) => { const b = e.target.closest('[
 $('#bdBoard').addEventListener('change', (e) => { if (/^[us]:/.test(e.target.value)) BD.load(e.target.value); });
 fetch('gallery/presets.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) { MY.shop.boards = (j.boards || []).filter((x) => x?.name && x?.P); MY.shop.shapes = (j.shapes || []).filter((x) => x?.name && x?.P); refreshMine(); } }).catch(() => {});
 refreshMine();
+
+/* ================= ضبط الطابعة: تعويضات + قطع اختبار ================= */
+const PRINTER_FIELDS = [
+  ['hole', 'تعويض الثقوب والفتحات (مم)', 0.05, 'يُضاف على قطر/مقاس كل الثقوب والفتحات. طابعتك تطلّع الثقوب أضيق؟ حط 0.1–0.3'],
+  ['lid', 'فراغ إضافي للغطاء (مم)', 0.05, 'يُضاف على «فراغ الغطاء». الغطاء ضيق؟ زد. واسع؟ خليه بالسالب'],
+  ['pin', 'فراغ إضافي للدبابيس (مم)', 0.05, 'يُنقص من قطر دبابيس تثبيت اللوحة'],
+];
+applyPrinter(store.get('printer', null));
+function applyPrinter(o) { setTol(o); }
+function refreshDesigns() { for (const o of [SH, BD]) if (o?.view) o.update?.(); }
+fetch('gallery/printer.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) { applyPrinter(j); applyPrinter(store.get('printer', null)); refreshDesigns(); } }).catch(() => {});
+async function lidCoupon() {
+  const save = { ...TOL }; setTol({ hole: 0, lid: 0, pin: 0 });
+  try {
+    await document.fonts.load('800 40px "Cairo"', '0.1');
+    const all = [];
+    [0.1, 0.2, 0.3, 0.4, 0.5].forEach((c, i) => {
+      const parts = buildShape({ shape: 'box', w: 30, d: 30, h: 14, corner: 3, hollow: true, lid: true, fasten: 'friction', wall: 2, clearance: c, content: 'text', faces: 'front', text1: c.toFixed(1), text2: '', font: 'Cairo', depth: 0.8, contrast: 1.2, invert: false, loop: false, hole: 5, colors: {} });
+      for (const p of parts) { for (let k = 1; k < p.tris.length; k += 3) p.tris[k] += i * 40; all.push(p.tris); }
+    });
+    return mergeTris(all);
+  } finally { setTol(save); }
+}
+function holeCoupon() {
+  const L = 92, H = 24, ds = [3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.8];
+  return plate(L, H, 3, (x) => {
+    x.beginPath(); x.moveTo(0, 0); x.lineTo(L, 0); x.lineTo(L, H); x.lineTo(10, H); x.lineTo(0, H - 10); x.closePath(); x.fill();
+    cut(x, [], ds.map((d, i) => [14 + i * 10.5, H / 2, d / 2]));
+  });
+}
+function openPrinter() {
+  const m = modal(`<h3>🖨️ ضبط الطابعة</h3>
+    <p class="hint">كل طابعة تطلّع الثقوب والأغطية بفرق بسيط. اطبع قطعتين صغيرتين، شوف أيهم ركب، وأدخل الرقم — وكل تصاميم الموقع تتعدل تلقائياً.</p>
+    <h4>1) اطبع قطع الاختبار</h4>
+    <div class="actions"><button class="btn small" data-a="holes">⬇ قطعة اختبار الثقوب (3 دقائق)</button><button class="btn small" data-a="lids">⬇ قطعة اختبار الغطاء (5 علب)</button></div>
+    <p class="hint">• الثقوب: 8 ثقوب من 3.0 إلى 3.8 مم (3.0، 3.1، 3.2، 3.3، 3.4، 3.5، 3.6، 3.8) من الزاوية المقطوعة. جرّب مسمارك M3: أنسب ثقب يدخل بدون ما يرتخي.</p>
+    <p class="hint">• الغطاء: 5 علب بفراغ 0.1 إلى 0.5 مم مكتوب على كل علبة. أنسب غطاء يدخل بضغط خفيف ويثبت.</p>
+    <h4>2) أدخل النتيجة</h4>
+    <div class="price-grid">
+      <label>أنسب ثقب لمسمار M3 (مم)<input type="number" id="pc-hole" step="0.1" min="2.8" max="4" placeholder="3.4"><small>أنا أحسب التعويض = الرقم − 3.2</small></label>
+      <label>أنسب فراغ للغطاء (مم)<input type="number" id="pc-lid" step="0.1" min="0.1" max="0.8" placeholder="0.4"><small>أنا أحسب التعويض = الرقم − 0.3</small></label>
+    </div>
+    <h4>3) أو عدّل التعويضات مباشرة</h4>
+    <div class="price-grid">${PRINTER_FIELDS.map(([k, n, st, h]) => `<label>${n}<input type="number" data-k="${k}" value="${TOL[k]}" step="${st}" min="-0.5" max="1"><small>${h}</small></label>`).join('')}</div>
+    <div class="actions"><button class="btn primary" data-a="save">💾 احفظ</button><button class="btn small" data-a="reset">↺ صفّر</button><button class="btn small" data-a="export">⬇ تصدير printer.json</button></div>
+    <p class="hint">تنحفظ في متصفحك. ولتطبيقها لكل الزوار ضع الملف المصدَّر في gallery/printer.json.</p>`, { wide: true });
+  const field = (k) => m.querySelector(`[data-k=${k}]`), set = (k, v) => (field(k).value = +v.toFixed(2));
+  m.querySelector('#pc-hole').addEventListener('input', (e) => { const v = parseFloat(e.target.value); if (Number.isFinite(v)) set('hole', v - 3.2); });
+  m.querySelector('#pc-lid').addEventListener('input', (e) => { const v = parseFloat(e.target.value); if (Number.isFinite(v)) set('lid', v - 0.3); });
+  const read = () => Object.fromEntries(PRINTER_FIELDS.map(([k]) => [k, parseFloat(field(k).value) || 0]));
+  m.addEventListener('click', async (e) => {
+    const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
+    if (a === 'holes') download(toSTL(holeCoupon(), 'holes'), 'test_holes.stl');
+    if (a === 'lids') { toast('جارٍ التجهيز…'); download(toSTL(await lidCoupon(), 'lids'), 'test_lids.stl'); }
+    if (a === 'save') { const o = read(); applyPrinter(o); store.set('printer', o); refreshDesigns(); toast('انحفظ ضبط الطابعة ✓'); m.close(); }
+    if (a === 'reset') { try { localStorage.removeItem('printer'); } catch {} applyPrinter({ hole: 0, lid: 0, pin: 0 }); refreshDesigns(); toast('تصفّر ضبط الطابعة'); m.close(); }
+    if (a === 'export') { download(new Blob([JSON.stringify(read(), null, 1)], { type: 'application/json' }), 'printer.json'); toast('تم تصدير الضبط ✓'); }
+  });
+}
+$('#printerBtn').onclick = (e) => { e.preventDefault(); openPrinter(); };
+
 /* ================= الطلب ================= */
 const MODE_LABEL = { lithophane: 'ليثوفين', relief: 'نقش بارز', face: 'نقش وجه', keychain: 'ميدالية من صورة', cookie: 'قالب كوكيز' };
 const O = {
@@ -1259,6 +1322,8 @@ $('#cStory').onclick = () => {
 };
 $('#kShare').onclick = () => doShare('keychain', kDesign(), K.P?.text1);
 $('#cShare').onclick = () => doShare('cup3d', cDesign(), C3.P?.text1);
+$('#shShare').onclick = () => { if (!SH.P) return; const P = cleanP(SH.read()); if (['photo', 'logo'].includes(P.content)) toast('الصورة ما تنشارك بالرابط — اللي يفتحه يرفعها من جديد', 4000); doShare('shapes', P, 'مجسمي من أبعادي'); };
+$('#bdShare').onclick = () => { if (!BD.B) return; doShare('boards', cleanP(BD.read()), 'علبة إلكترونيات'); };
 if (K.logo === null) { /* الشعار لا يُنقل بالرابط */ }
 
 /* ================= باقة الكوفيهات ================= */
@@ -1494,6 +1559,8 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   const { page, design } = parseHash();
   if (design && page === 'keychain') { K.write({ ...K.read(), ...design }); }
   if (design && page === 'cup3d') { C3.write(design); }
+  if (design && page === 'shapes') { SH.write(design); }
+  if (design && page === 'boards') { BD.write(design); }
   go(page, false);
   if (design) toast('تم فتح التصميم المشترك ✓ — عدّل عليه براحتك');
 }
