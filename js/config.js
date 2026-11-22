@@ -29,6 +29,15 @@ export const CONFIG = {
     { key: 'stand', label: 'ستاند QR للطاولة', icon: '🪧', price: 25, qty: 6, go: 'keychain' },
     { key: 'coaster', label: 'مسند أكواب', icon: '⭕', price: 15, qty: 12, go: 'keychain' },
   ],
+  // ألوان الفلامنت المتوفرة عندك — الزبون يختار منها فقط. اجعل limitColors: false للسماح بأي لون
+  limitColors: true,
+  filaments: [
+    { name: 'أبيض', hex: '#ffffff' }, { name: 'أسود', hex: '#1a1a1a' }, { name: 'رمادي', hex: '#8c8c8c' }, { name: 'فضي', hex: '#c0c0c0' },
+    { name: 'ذهبي', hex: '#d4a017' }, { name: 'بيج', hex: '#f1e6cf' }, { name: 'بني فاتح', hex: '#a87b56' }, { name: 'بني', hex: '#6b4226' },
+    { name: 'بني غامق', hex: '#3a2a22' }, { name: 'أحمر', hex: '#c62828' }, { name: 'عنابي', hex: '#8a1538' }, { name: 'وردي', hex: '#f4a7b9' },
+    { name: 'برتقالي', hex: '#f57c00' }, { name: 'أصفر', hex: '#fbc02d' }, { name: 'أخضر', hex: '#2e7d32' }, { name: 'أخضر غامق', hex: '#1e4d3a' },
+    { name: 'أزرق', hex: '#1565c0' }, { name: 'كحلي', hex: '#1d2b53' }, { name: 'سماوي', hex: '#4fc3f7' }, { name: 'بنفسجي', hex: '#6a1b9a' },
+  ],
   tiers: [
     { min: 1, off: 0 },
     { min: 10, off: 10 },

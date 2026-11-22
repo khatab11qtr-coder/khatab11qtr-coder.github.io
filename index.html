@@ -32,10 +32,11 @@
   <nav class="tabs" role="tablist">
     <button data-go="home" class="active">الرئيسية</button>
     <button data-go="keychain">صمّم ميدالية</button>
-    <button data-go="cup3d">☕ كوب 3D</button>
+    <button data-go="cup3d">🧊 مجسمات 3D</button>
     <button data-go="occasions">🎉 مناسبات</button>
     <button data-go="photo">صورة ← مجسم</button>
     <button data-go="ai">مجسم كامل AI</button>
+    <button data-go="custom">✍️ صمّم لي</button>
     <button data-go="cafe">☕ للكوفيهات</button>
     <button data-go="gallery">أعمالنا</button>
     <button data-go="order">🛒 اطلب</button>
@@ -165,6 +166,9 @@
     <div class="stage">
       <div class="viewer" id="kView">
         <div class="vtools">
+          <button class="icon-btn" id="kUndo" title="تراجع (Ctrl+Z)" disabled>↶</button>
+          <button class="icon-btn" id="kRedo" title="إعادة (Ctrl+Y)" disabled>↷</button>
+          <button class="icon-btn" id="kCmp" title="مقارنة الحجم">📏</button>
           <button class="icon-btn" id="kRot" title="تدوير تلقائي">⟳</button>
           <button class="icon-btn" id="kTop" title="منظر علوي">⬒</button>
           <button class="icon-btn" id="kFlip" title="اقلب لرؤية الوجه الخلفي">⇅</button>
@@ -195,39 +199,44 @@
 <section id="cup3d" class="page">
   <div class="workspace">
     <aside class="panel">
-      <h2>ميدالية كوب 3D</h2>
+      <h2>مجسمات 3D</h2>
       <p class="hint">مجسم كامل من كل الجهات — كل قطعة بلونها.</p>
-      <div class="field"><label for="cHeight">ارتفاع الكوب <output id="cHeightO">40</output> مم</label><input type="range" id="cHeight" min="25" max="90" value="40"></div>
+      <div class="tpl-grid" id="cModels"></div>
+      <div class="field"><label for="cHeight"><span id="cSizeLbl">الارتفاع</span> <output id="cHeightO">40</output> مم</label><input type="range" id="cHeight" min="25" max="90" value="40"></div>
 
       <label class="lbl">الألوان</label>
-      <div class="colors5">
-        <label><input type="color" id="cLid" value="#3a2a22"><span>الغطاء</span></label>
-        <label><input type="color" id="cCup" value="#f1e6cf"><span>الكوب</span></label>
-        <label><input type="color" id="cSleeve" value="#8a5a36"><span>الكم</span></label>
-        <label><input type="color" id="cDeco" value="#6b4226"><span>النقش</span></label>
-        <label><input type="color" id="cLoop" value="#d4a017"><span>الحلقة</span></label>
-      </div>
+      <div class="colors5" id="cColors"></div>
       <div class="presets" id="cPresets"></div>
 
-      <div class="field"><label for="cContent">النقش على الكم (الأمام)</label>
+      <div class="m-letters">
+        <div class="field"><label for="cLetters">الكلمة أو الاسم</label><input id="cLetters" value="Bean" maxlength="24"></div>
+        <div class="row2">
+          <div class="field"><label for="cDepth">السماكة (مم)</label><input type="number" id="cDepth" value="8" min="3" max="30" step="1"></div>
+          <label class="chk"><input type="checkbox" id="cBase" checked> قاعدة</label>
+          <label class="chk"><input type="checkbox" id="cBridge" checked> وصل النقاط</label>
+        </div>
+        <p class="hint">«وصل النقاط» يربط النقاط والحروف المنفصلة بأعمدة رفيعة حتى تنطبع واقفة بدون ما تطيح.</p>
+      </div>
+
+      <div class="field m-deco"><label for="cContent">النقش (الأمام)</label>
         <select id="cContent"><option value="beans">☕ حبتين قهوة</option><option value="text">✍️ اسم / كتابة</option><option value="beans_text">حبوب + اسم</option><option value="logo">🖼️ شعار</option><option value="none">بدون</option></select></div>
       <div class="field c-text"><label for="cText1">الكتابة</label><input id="cText1" value="Bean House" maxlength="30"></div>
       <div class="field c-text2"><label for="cText2">سطر ثانٍ (اختياري)</label><input id="cText2" value="" maxlength="30"></div>
-      <div class="field c-text"><label for="cFont">الخط</label>
+      <div class="field c-font"><label for="cFont">الخط</label>
         <select id="cFont"><option>Cairo</option><option>Tajawal</option><option>Reem Kufi</option><option>Lalezar</option><option>Changa</option><option>Lemonada</option></select></div>
       <div class="field c-logo"><label for="cLogo">صورة الشعار</label><input type="file" id="cLogo" accept="image/*">
         <label class="chk"><input type="checkbox" id="cBg" checked> إزالة الخلفية تلقائياً</label>
         <div class="field"><label for="cThresh">العتبة <output id="cThreshO">128</output></label><input type="range" id="cThresh" min="20" max="240" value="128"></div>
       </div>
 
-      <div class="field"><label for="cBack">خلف الكوب</label>
+      <div class="field m-back"><label for="cBack">الخلف</label>
         <select id="cBack"><option value="none">بدون</option><option value="text">كتابة</option><option value="beans">حبتين قهوة</option></select></div>
       <div class="field c-back"><label for="cBackText">كتابة الخلف</label><input id="cBackText" dir="auto" value="@beanhouse" maxlength="30"></div>
 
       <details class="more">
         <summary>⚙️ إعدادات متقدمة</summary>
         <div class="row2">
-          <label class="chk"><input type="checkbox" id="cSleeveOn" checked> الكم</label>
+          <label class="chk m-sleeve"><input type="checkbox" id="cSleeveOn" checked> الكم</label>
           <label class="chk"><input type="checkbox" id="cLoopOn" checked> حلقة التعليق</label>
         </div>
         <div class="row2">
@@ -238,7 +247,7 @@
     </aside>
     <div class="stage">
       <div class="viewer" id="cView">
-        <div class="vtools"><button class="icon-btn on" id="cRot" title="تدوير تلقائي">⟳</button></div>
+        <div class="vtools"><button class="icon-btn" id="cUndo" title="تراجع (Ctrl+Z)" disabled>↶</button><button class="icon-btn" id="cRedo" title="إعادة (Ctrl+Y)" disabled>↷</button><button class="icon-btn" id="cCmp" title="مقارنة الحجم">📏</button><button class="icon-btn on" id="cRot" title="تدوير تلقائي">⟳</button></div>
         <div class="busy" id="cBusy" hidden>جارٍ التوليد…</div>
       </div>
       <div class="warn" id="cWarn" hidden></div>
@@ -475,6 +484,40 @@
   </div>
 </section>
 
+<!-- ===================== صمّم لي ===================== -->
+<section id="custom" class="page">
+  <div class="order">
+    <div class="card">
+      <span class="pill">طلب تصميم خاص</span>
+      <h2>عندك فكرة؟ نصممها لك</h2>
+      <p class="hint">مجسم شخصية، هدية مخصصة، قطعة بديلة، شعار مجسم، أو أي فكرة — اكتب وصفها وارفع صور مرجعية، ونرجع لك بالتصميم والسعر.</p>
+      <div class="field"><label for="cuType">نوع القطعة</label>
+        <select id="cuType"><option>ميدالية خاصة</option><option>مجسم / تمثال صغير</option><option>هدية مخصصة</option><option>لوحة أو شعار مجسم</option><option>قطعة بديلة / غيار</option><option>أخرى</option></select></div>
+      <div class="field"><label for="cuDesc">وصف الفكرة</label><textarea id="cuDesc" rows="5" placeholder="مثال: مجسم صغير لقطتي بارتفاع 8 سم، لونها رمادي وعيونها خضراء…"></textarea></div>
+      <label class="drop" id="cuDrop"><input type="file" id="cuFiles" accept="image/*" multiple hidden><strong>صور مرجعية (اختياري)</strong><span>صور للفكرة أو للقطعة من أكثر من زاوية</span></label>
+      <div class="thumbs" id="cuThumbs"></div>
+    </div>
+    <div class="card">
+      <h2>التفاصيل</h2>
+      <div class="row2">
+        <div class="field"><label for="cuSize">المقاس التقريبي (مم)</label><input id="cuSize" type="number" min="5" max="400" placeholder="80"></div>
+        <div class="field"><label for="cuQty">الكمية</label><input id="cuQty" type="number" min="1" value="1"></div>
+      </div>
+      <div class="field"><label for="cuColors">الألوان المطلوبة</label><input id="cuColors" placeholder="ذهبي وأسود"></div>
+      <div class="row2">
+        <div class="field"><label for="cuDate">موعد التسليم</label><input id="cuDate" type="date"></div>
+        <div class="field"><label for="cuBudget">الميزانية التقريبية</label><input id="cuBudget" placeholder="مثال: 50–100"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="cuName">الاسم</label><input id="cuName" autocomplete="name"></div>
+        <div class="field"><label for="cuPhone">رقم الجوال</label><input id="cuPhone" type="tel" dir="ltr" autocomplete="tel"></div>
+      </div>
+      <div class="actions"><button class="btn wa" id="cuSend">💬 أرسل الطلب واتساب</button></div>
+      <p class="hint">على الجوال تنرسل الصور مع الطلب مباشرة. على الكمبيوتر أرفقها في محادثة الواتساب.</p>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== من نحن ===================== -->
 <section id="about" class="page">
   <div class="guide about">
@@ -501,6 +544,11 @@
         <li>افتح ملف 3MF في Bambu Studio / Orca: كل قطعة (غطاء، كوب، كم، نقش، حلقة) تطلع بلونها.</li>
         <li>ارتفاع طبقة 0.12 مم للنقش، وجدران 3 خطوط، وتعبئة 15٪.</li>
         <li>اربط الحلقة الذهبية المعدنية في حلقة التعليق بعد الطباعة.</li></ul></article>
+      <article class="card"><h3>🧊 المج والدلة والحروف</h3><ul>
+        <li>المج: فعّل دعامات شجرية (Tree) تحت المقبض فقط.</li>
+        <li>الدلة 3D: المصب والمقبض يحتاجون دعامات خفيفة.</li>
+        <li>الحروف الواقفة: اطبعها واقفة كما هي، تعبئة 20٪، وفعّل «وصل النقاط» للعربي.</li>
+        <li>حامل الجوال وحامل البطاقات: بدون دعامات، 3 جدران للقوة.</li></ul></article>
       <article class="card"><h3>☕ الميداليات</h3><ul>
         <li>ارتفاع الطبقة 0.12–0.16 مم للنصوص الصغيرة.</li>
         <li>تعبئة 20–30٪، وجدران 3 خطوط لقوة الحلقة.</li>
@@ -532,7 +580,7 @@
 </main>
 
 <footer class="foot">
-  <nav class="foot-links"><a href="#about" data-go="about">من نحن</a> · <a href="#guide" data-go="guide">دليل الطباعة</a> · <a href="#ai" data-go="ai">مجسم AI</a> · <a href="#order" data-go="order">اطلب</a></nav>
+  <nav class="foot-links"><a href="#about" data-go="about">من نحن</a> · <a href="#guide" data-go="guide">دليل الطباعة</a> · <a href="#ai" data-go="ai">مجسم AI</a> · <a href="#order" data-go="order">اطلب</a> · <a href="#custom" data-go="custom">صمّم لي</a> · <a href="#home" id="tourBtn">🎓 جولة سريعة</a></nav>
   <button class="btn small" id="installBtn" hidden>📲 ثبّت التطبيق على جوالك</button>
   <span>© <span id="year"></span> <span class="bn">طبعة 3D</span> — كل المعالجة داخل متصفحك.</span>
 </footer>

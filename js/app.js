@@ -1,10 +1,10 @@
 import { CONFIG } from './config.js';
 import { Viewer } from './viewer.js';
 import { toSTL, volumeOf, bboxOf, mergeTris } from './mesh.js';
-import { TEMPLATES, rasterize, buildSolids, makeStencil } from './keychain.js';
+import { TEMPLATES, rasterize, buildSolids, buildSolidsAsync, makeStencil } from './keychain.js';
 import { lithophane, relief, faceRelief, cookieCutter, removeBackground } from './photo.js';
 import { export3MF, arrange, bedOutline, BEDS } from './export.js';
-import { buildCup } from './cup3d.js';
+import { buildCup, buildModel, MODELS } from './cup3d.js';
 import { setLang } from './i18n.js';
 import { modal, openAR, storyImage, STORY_STYLES, designURL, shareLink, parseHash } from './extras.js';
 import * as AI from './ai.js';
@@ -91,6 +91,42 @@ document.addEventListener('click', (e) => {
   if (el) { e.preventDefault(); go(el.dataset.go); }
 });
 
+/* ================= تراجع / إعادة ================= */
+const hist = {
+  S: { k: { past: [], future: [], cur: null, lock: false }, c: { past: [], future: [], cur: null, lock: false } },
+  snap(P) { const o = { ...P }; delete o.logoStencil; delete o.logoShape; return JSON.stringify(o); },
+  push(ns, P) {
+    const S = this.S[ns], v = this.snap(P);
+    if (S.lock) { S.lock = false; S.cur = v; this.ui(); return; }
+    if (v === S.cur) return;
+    if (S.cur) { S.past.push(S.cur); if (S.past.length > 60) S.past.shift(); }
+    S.cur = v; S.future = []; this.ui();
+  },
+  go(ns, dir) {
+    const S = this.S[ns], from = dir < 0 ? S.past : S.future, to = dir < 0 ? S.future : S.past;
+    if (!from.length) return;
+    to.push(S.cur); S.cur = from.pop(); S.lock = true;
+    const P = JSON.parse(S.cur);
+    if (ns === 'k') { K.write({ ...P, logoStencil: K.logoStencil }); K.update(); } else { C3.write(P); C3.update(); }
+    this.ui();
+  },
+  ui() {
+    for (const ns of ['k', 'c']) {
+      const S = this.S[ns];
+      const u = document.getElementById(ns + 'Undo'), r = document.getElementById(ns + 'Redo');
+      if (u) u.disabled = !S.past.length; if (r) r.disabled = !S.future.length;
+    }
+  },
+};
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+  const ns = $('#keychain').classList.contains('active') ? 'k' : $('#cup3d').classList.contains('active') ? 'c' : null;
+  if (!ns) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); hist.go(ns, -1); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); hist.go(ns, 1); }
+});
+
 /* ================= الميداليات ================= */
 function alphaFrac(src) {
   const c = document.createElement('canvas'); c.width = 64; c.height = 64;
@@ -147,6 +183,7 @@ const K = {
     this.template = t; store.set('k_tpl', t);
     $$('.tpl').forEach((b) => b.classList.toggle('active', b.dataset.t === t));
     $('#kSizeLbl').textContent = TEMPLATES[t].sizeLabel;
+    $('#kSize').max = TEMPLATES[t].max || 140;
     if (resize) $('#kSize').value = TEMPLATES[t].def;
     $('#kSizeO').textContent = $('#kSize').value;
     if (t === 'logo' && !this.logo) $('#kLogoBox').open = true;
@@ -171,12 +208,13 @@ const K = {
         return;
       }
       const R = rasterize(P);
-      const S = buildSolids(R);
+      const S = await buildSolidsAsync(R);
       const first = !this.R || this.platePreview;
       this.platePreview = false;
       this.view.show(this.parts(S, P), { keepView: !first && this.P?.template === P.template && this.P?.size === P.size });
       this.applyFlip();
       this.P = P; this.R = R; this.S = S;
+      hist.push('k', P);
       const full = mergeTris([S.base, S.accent]);
       const st = costStats(full, [['تغيير اللون عند', R.colorZ.map((z) => `${fmt(z)} مم`).join(' و ')]]);
       $('#kStats').innerHTML = st.html; this.stats = st;
@@ -252,6 +290,8 @@ $('#kLogo').addEventListener('change', async (e) => {
 });
 $('#kRot').onclick = (e) => { K.view.autoRotate = !K.view.autoRotate; e.currentTarget.classList.toggle('on', K.view.autoRotate); };
 $('#kTop').onclick = () => K.view.topView();
+$('#kUndo').onclick = () => hist.go('k', -1); $('#kRedo').onclick = () => hist.go('k', 1);
+$('#kCmp').onclick = (e) => { const on = K.view.toggleRef(); e.currentTarget.classList.toggle('on', on); if (on) toast('📏 بطاقة بنكية بمقاسها الحقيقي 85×54 مم للمقارنة'); };
 $('#kFlip').onclick = (e) => { K.flipped = !K.flipped; K.applyFlip(); e.currentTarget.classList.toggle('on', K.flipped); };
 $('#kFlat').onclick = (e) => {
   const c = $('#k2d'); c.hidden = !c.hidden; e.currentTarget.classList.toggle('on', !c.hidden);
@@ -474,7 +514,7 @@ $('#pAll').onclick = async () => {
   finally { btn.disabled = false; btn.textContent = '📦 تحويل كل الصور ZIP'; }
 };
 
-/* ================= كوب 3D ================= */
+/* ================= مجسمات 3D ================= */
 const CUP_PRESETS = [
   { lid: '#3a2a22', cup: '#f1e6cf', sleeve: '#8a5a36', deco: '#6b4226', loop: '#d4a017' },
   { lid: '#ffffff', cup: '#ffffff', sleeve: '#00704a', deco: '#ffffff', loop: '#c0c0c0' },
@@ -483,24 +523,56 @@ const CUP_PRESETS = [
   { lid: '#1f3b57', cup: '#e6f2ff', sleeve: '#4a90c2', deco: '#ffffff', loop: '#d4a017' },
   { lid: '#1e4d3a', cup: '#f3efe2', sleeve: '#c9a227', deco: '#1e4d3a', loop: '#c9a227' },
 ];
-const CK = ['lid', 'cup', 'sleeve', 'deco', 'loop'];
-const cId = (k) => '#c' + k[0].toUpperCase() + k.slice(1);
+const PART_NAMES = {};
+Object.values(MODELS).forEach((M) => M.parts.forEach(([k, n]) => (PART_NAMES[k] ||= n)));
 const C3 = {
   view: null, parts: null, P: null, logo: null, stencil: null, busy: false, pending: false,
+  model: store.get('c_model', 'takeaway'), colorsBy: store.get('c_colors', {}),
+  M() { return MODELS[this.model] || MODELS.takeaway; },
   ensure() { if (!this.view) { this.view = new Viewer($('#cView')); this.view.autoRotate = true; this.update(); } },
-  colors() { return Object.fromEntries(CK.map((k) => [k, $(cId(k)).value])); },
+  colors() { const o = {}; $$('#cColors input').forEach((e) => (o[e.dataset.k] = e.value)); return o; },
+  renderColors() {
+    const saved = this.colorsBy[this.model] || {};
+    $('#cColors').innerHTML = this.M().parts.map(([k, n, d]) => `<label><input type="color" data-k="${k}" value="${saved[k] || d}"><span>${n}</span></label>`).join('');
+    $('#cPresets').hidden = this.model !== 'takeaway';
+  },
+  setModel(m, upd = true) {
+    if (!MODELS[m]) m = 'takeaway';
+    this.model = m; store.set('c_model', m);
+    const M = this.M();
+    $$('#cModels .tpl').forEach((b) => b.classList.toggle('active', b.dataset.m === m));
+    const h = $('#cHeight'); h.min = M.min; h.max = M.max; h.value = M.def; $('#cHeightO').textContent = M.def;
+    $('#cSizeLbl').textContent = M.sizeLabel || 'الارتفاع';
+    this.renderColors(); this.sync();
+    if (upd) { this.parts = null; this.update(); }
+  },
   read() {
     return {
-      height: +$('#cHeight').value, content: $('#cContent').value, text1: $('#cText1').value.trim(), text2: $('#cText2').value.trim(),
+      model: this.model, size: +$('#cHeight').value, height: +$('#cHeight').value, content: $('#cContent').value,
+      text1: this.model === 'letters' ? $('#cLetters').value.trim() : $('#cText1').value.trim(), text2: $('#cText2').value.trim(),
       font: $('#cFont').value, backContent: $('#cBack').value, backText: $('#cBackText').value.trim(),
       sleeve: $('#cSleeveOn').checked, loop: $('#cLoopOn').checked, hole: +$('#cHole').value, segments: +$('#cSeg').value,
+      depth: +$('#cDepth').value, base: $('#cBase').checked, bridge: $('#cBridge').checked,
       logoStencil: this.stencil, colors: this.colors(),
     };
   },
+  write(P) {
+    const set = (id, v) => { const e = $(id); if (e && v != null) e.type === 'checkbox' ? (e.checked = v) : (e.value = v); };
+    this.setModel(P.model || 'takeaway', false);
+    set('#cHeight', P.size || P.height); set('#cContent', P.content); set('#cText2', P.text2); set('#cFont', P.font);
+    if ((P.model || 'takeaway') === 'letters') set('#cLetters', P.text1); else set('#cText1', P.text1);
+    set('#cBack', P.backContent); set('#cBackText', P.backText); set('#cSleeveOn', P.sleeve); set('#cLoopOn', P.loop); set('#cHole', P.hole);
+    set('#cDepth', P.depth); set('#cBase', P.base); set('#cBridge', P.bridge);
+    if (P.colors) $$('#cColors input').forEach((e) => { if (P.colors[e.dataset.k]) e.value = P.colors[e.dataset.k]; });
+    $('#cHeightO').textContent = $('#cHeight').value; this.sync();
+  },
   sync() {
-    const old = [...document.body.classList].filter((c) => /^c[cb]-/.test(c));
+    const M = this.M();
+    const old = [...document.body.classList].filter((c) => /^(c[cb]-|mod-|nodeco$|noback$)/.test(c));
     for (const c of old) document.body.classList.toggle(c, false);
-    document.body.classList.add('cc-' + $('#cContent').value, 'cb-' + $('#cBack').value);
+    document.body.classList.add('cc-' + $('#cContent').value, 'cb-' + $('#cBack').value, 'mod-' + this.model);
+    if (!M.deco) document.body.classList.add('nodeco');
+    if (!M.back) document.body.classList.add('noback');
   },
   makeStencil() {
     if (!this.logo) return;
@@ -514,25 +586,32 @@ const C3 = {
     this.busy = true; $('#cBusy').hidden = false; await nextFrame();
     try {
       const P = this.read();
-      try { await Promise.all([document.fonts.load(`800 40px "${P.font}"`, P.text1 + P.backText || 'a'), document.fonts.load(`700 40px "${P.font}"`, P.text2 || 'a')]); } catch {}
-      const out = buildCup(P);
+      try { await Promise.all([document.fonts.load(`900 40px "${P.font}"`, P.text1 + P.backText || 'a'), document.fonts.load(`800 40px "${P.font}"`, P.text1 || 'a'), document.fonts.load(`700 40px "${P.font}"`, P.text2 || 'a')]); } catch {}
+      const out = buildModel(P);
       const first = !this.parts;
-      this.parts = out.parts.map((p) => ({ ...p, color: P.colors[p.key] }));
-      this.P = P; this.info = out.info;
-      this.view.show(this.parts, { keepView: !first && this.lastH === P.height });
-      if (!first && this.lastH === P.height) { /* نحافظ على زاوية المستخدم */ } else {
-        const s = P.height; this.view.camera.position.set(s * 0.75, -s * 2.05, s * 1.3); this.view.controls.target.set(0, 0, s * 0.62); this.view.dirty = true;
+      const defs = Object.fromEntries(this.M().parts.map(([k, , d]) => [k, d]));
+      this.parts = out.map((p) => ({ ...p, name: PART_NAMES[p.key] || p.key, color: P.colors[p.key] || defs[p.key] || '#cccccc' }));
+      this.P = P;
+      this.view.show(this.parts, { keepView: !first && this.lastKey === P.model + P.size });
+      if (first || this.lastKey !== P.model + P.size) {
+        const b = bboxOf(mergeTris(this.parts.map((p) => p.tris))).size, s = Math.max(b[0], b[1] * 0.8, b[2]);
+        this.view.camera.position.set(s * 0.75, -s * 2.05, s * 1.3); this.view.controls.target.set(0, 0, b[2] * 0.5); this.view.dirty = true;
       }
-      this.lastH = P.height;
+      this.lastKey = P.model + P.size;
+      hist.push('c', P);
       const full = mergeTris(this.parts.map((p) => p.tris));
       this.stats = costStats(full);
       $('#cStats').innerHTML = this.stats.html;
       const w = [];
-      if (P.content === 'logo' && !P.logoStencil) w.push('ارفع صورة الشعار.');
-      if ((P.content === 'text' || P.content === 'beans_text') && !P.text1) w.push('اكتب النص اللي تبيه على الكم.');
-      if (P.height < 32 && ['text', 'beans_text'].includes(P.content) && P.text1.length > 10) w.push('النص طويل على كوب صغير — كبّر الكوب أو اختصر الكتابة حتى تكون مقروءة.');
+      const M = this.M();
+      if (M.deco && P.content === 'logo' && !P.logoStencil) w.push('ارفع صورة الشعار.');
+      if (M.deco && ['text', 'beans_text'].includes(P.content) && !P.text1) w.push('اكتب النص اللي تبيه على الكم.');
+      if (P.model === 'takeaway' && P.size < 32 && ['text', 'beans_text'].includes(P.content) && P.text1.length > 10) w.push('النص طويل على كوب صغير — كبّر الكوب أو اختصر الكتابة حتى تكون مقروءة.');
+      if (P.model === 'mug') w.push('المقبض فيه جزء معلّق — فعّل دعامات خفيفة (Tree) تحت المقبض فقط.');
+      if (P.model === 'dallah') w.push('المصب والمقبض يحتاجون دعامات خفيفة (Tree supports).');
+      if (P.model === 'letters' && this.stats.box[0] > 240) w.push('الكلمة أطول من أغلب البلاطات — صغّر الحروف أو اختصر الكلمة.');
       $('#cWarn').hidden = !w.length; $('#cWarn').innerHTML = w.map((x) => '⚠️ ' + x).join('<br>');
-    } catch (e) { console.error(e); toast('تعذر توليد الكوب: ' + e.message); }
+    } catch (e) { console.error(e); toast('تعذر توليد المجسم: ' + e.message); }
     finally {
       this.busy = false; $('#cBusy').hidden = true;
       if (this.pending) { this.pending = false; this.update(); }
@@ -540,23 +619,27 @@ const C3 = {
   },
   recolor() {
     const c = this.colors();
-    if (this.parts) this.parts.forEach((p, i) => { p.color = c[p.key]; this.view.group.children[i]?.material.color.set(c[p.key]); });
+    this.colorsBy[this.model] = c; store.set('c_colors', this.colorsBy);
+    if (this.parts) this.parts.forEach((p, i) => { if (c[p.key]) { p.color = c[p.key]; this.view.group.children[i]?.material.color.set(c[p.key]); } });
     if (this.P) this.P.colors = c;
     if (this.view) this.view.dirty = true;
   },
-  base() { return `cup3d_${safeName(this.P?.text1 || 'coffee')}_${this.P?.height}mm`; },
+  base() { return `${this.model}_${safeName(this.P?.text1 || 'design')}_${this.P?.size}mm`; },
 };
-$('#cPresets').innerHTML = CUP_PRESETS.map((p, i) => `<button data-i="${i}" title="ألوان جاهزة">${CK.map((k) => `<i style="background:${p[k]}"></i>`).join('')}</button>`).join('');
+$('#cModels').innerHTML = Object.entries(MODELS).map(([k, M]) => `<button class="tpl" data-m="${k}" title="${M.label}"><span>${M.icon}</span>${M.label}</button>`).join('');
+$('#cModels').addEventListener('click', (e) => { const b = e.target.closest('.tpl'); if (b) C3.setModel(b.dataset.m); });
+$('#cPresets').innerHTML = CUP_PRESETS.map((p, i) => `<button data-i="${i}" title="ألوان جاهزة">${['lid', 'cup', 'sleeve', 'deco', 'loop'].map((k) => `<i style="background:${p[k]}"></i>`).join('')}</button>`).join('');
 $('#cPresets').onclick = (e) => {
   const b = e.target.closest('[data-i]'); if (!b) return;
-  const p = CUP_PRESETS[+b.dataset.i]; CK.forEach((k) => ($(cId(k)).value = p[k])); C3.recolor();
+  const p = CUP_PRESETS[+b.dataset.i]; $$('#cColors input').forEach((x) => { if (p[x.dataset.k]) x.value = p[x.dataset.k]; }); C3.recolor();
 };
+$('#cColors').addEventListener('input', () => C3.recolor());
+C3.setModel(C3.model, false);
 const cUpd = debounce(() => C3.update(), 300);
 $$('#cup3d .panel input, #cup3d .panel select').forEach((el) => {
-  if (el.id === 'cLogo') return;
+  if (el.id === 'cLogo' || el.type === 'color') return;
   el.addEventListener('input', () => {
     const o = $('#' + el.id + 'O'); if (o) o.textContent = el.value;
-    if (el.type === 'color') { C3.recolor(); return; }
     if (el.id === 'cContent' || el.id === 'cBack') C3.sync();
     if ((el.id === 'cBg' || el.id === 'cThresh') && C3.logo) C3.makeStencil();
     cUpd();
@@ -566,10 +649,11 @@ $('#cLogo').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
   try { C3.logo = await loadImage(f); C3.makeStencil(); $('#cContent').value = 'logo'; C3.sync(); C3.update(); } catch (err) { toast(err.message); }
 });
-C3.sync();
+$('#cUndo').onclick = () => hist.go('c', -1); $('#cRedo').onclick = () => hist.go('c', 1);
+$('#cCmp').onclick = (e) => { const on = C3.view.toggleRef(); e.currentTarget.classList.toggle('on', on); if (on) toast('📏 بطاقة بنكية بمقاسها الحقيقي 85×54 مم للمقارنة'); };
 $('#cRot').onclick = (e) => { C3.view.autoRotate = !C3.view.autoRotate; e.currentTarget.classList.toggle('on', C3.view.autoRotate); };
 $('#c3MF').onclick = async () => { if (!C3.parts) return; download(await export3MF([{ name: C3.base(), parts: C3.parts }]), C3.base() + '.3mf'); toast('3MF ملوّن جاهز ✓'); };
-$('#cSTL').onclick = () => { if (C3.parts) download(toSTL(mergeTris(C3.parts.map((p) => p.tris)), 'cup3d'), C3.base() + '.stl'); };
+$('#cSTL').onclick = () => { if (C3.parts) download(toSTL(mergeTris(C3.parts.map((p) => p.tris)), 'model3d'), C3.base() + '.stl'); };
 $('#cZip').onclick = async () => {
   if (!C3.parts) return;
   const zip = new JSZip();
@@ -580,6 +664,7 @@ $('#cZip').onclick = async () => {
 $('#cPNG').onclick = () => fetch(C3.view.snapshot()).then((r) => r.blob()).then((b) => download(b, C3.base() + '.png'));
 $('#cOrder').onclick = () => { O.source = 'cup3d'; go('order'); };
 
+
 /* ================= الطلب ================= */
 const MODE_LABEL = { lithophane: 'ليثوفين', relief: 'نقش بارز', face: 'نقش وجه', keychain: 'ميدالية من صورة', cookie: 'قالب كوكيز' };
 const O = {
@@ -588,12 +673,12 @@ const O = {
   info() {
     if (this.source === 'cup3d' && C3.parts) {
       const P = C3.P, CL = { beans: 'حبتين قهوة', text: 'كتابة', beans_text: 'حبوب + اسم', logo: 'شعار', none: '—' };
-      const names = { lid: 'الغطاء', cup: 'الكوب', sleeve: 'الكم', deco: 'النقش', loop: 'الحلقة' };
+      const names = PART_NAMES, M = C3.M();
       return {
-        title: 'ميدالية كوب 3D', unit: C3.stats.price,
+        title: M.label, unit: C3.stats.price,
         rows: [
-          ['النوع', '🥤 كوب 3D'], ['الارتفاع', `${P.height} مم`], ['النقش', CL[P.content]],
-          ['الكتابة', ['text', 'beans_text'].includes(P.content) ? [P.text1, P.text2].filter(Boolean).join(' / ') : '—'],
+          ['النوع', `${M.icon} ${M.label}`], ['المقاس', C3.stats.box.map((v) => fmt(v)).join(' × ') + ' مم'], ['النقش', M.deco ? CL[P.content] : '—'],
+          ['الكتابة', P.model === 'letters' || ['text', 'beans_text'].includes(P.content) ? [P.text1, P.text2].filter(Boolean).join(' / ') : '—'],
           ['الخلف', P.backContent === 'text' ? P.backText : P.backContent === 'beans' ? 'حبتين قهوة' : '—'],
           ['الألوان', C3.parts.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
         ],
@@ -697,15 +782,6 @@ const G = {
   },
 };
 
-/* ================= كوب 3D: كتابة الإعدادات ================= */
-C3.write = function (P) {
-  const set = (id, v) => { const e = $(id); if (e && v != null) e.type === 'checkbox' ? (e.checked = v) : (e.value = v); };
-  set('#cHeight', P.height); set('#cContent', P.content); set('#cText1', P.text1); set('#cText2', P.text2); set('#cFont', P.font);
-  set('#cBack', P.backContent); set('#cBackText', P.backText); set('#cSleeveOn', P.sleeve); set('#cLoopOn', P.loop); set('#cHole', P.hole);
-  if (P.colors) CK.forEach((k) => set(cId(k), P.colors[k]));
-  $('#cHeightO').textContent = $('#cHeight').value; this.sync();
-};
-
 /* ================= AR + ستوري + مشاركة ================= */
 const KEEP_K = ['template', 'text1', 'text2', 'qr', 'font', 'textMode', 'size', 'baseH', 'raiseH', 'hole', 'res', 'border', 'decor', 'c1', 'c2', 'back', 'backText', 'nozzle'];
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
@@ -750,7 +826,7 @@ $('#cAR').onclick = () => { if (C3.parts) openAR(C3.parts, { title: C3.P.text1, 
 $('#kStory').onclick = () => { if (K.S) openStory({ view: K.view, title: K.P.text1 || TEMPLATES[K.P.template].label, sub: K.P.text2, qrUrl: designURL('keychain', kDesign()), font: K.P.font }); };
 $('#cStory').onclick = () => {
   if (!C3.parts) return;
-  const t = ['text', 'beans_text'].includes(C3.P.content) && C3.P.text1 ? C3.P.text1 : 'ميدالية كوب 3D';
+  const t = (C3.P.model === 'letters' || ['text', 'beans_text'].includes(C3.P.content)) && C3.P.text1 ? C3.P.text1 : C3.M().label;
   openStory({ view: C3.view, title: t, sub: 'بألوانك وشعارك', qrUrl: designURL('cup3d', cDesign()), font: C3.P.font });
 };
 $('#kShare').onclick = () => doShare('keychain', kDesign(), K.P?.text1);
@@ -805,6 +881,81 @@ $('#pkgSend').onclick = () => {
     }
   } catch {}
 })();
+
+/* ================= ألوان الفلامنت المتوفرة ================= */
+if (CONFIG.limitColors && CONFIG.filaments?.length) {
+  let pop = null;
+  const close = () => { pop?.remove(); pop = null; };
+  document.addEventListener('click', (e) => {
+    const inp = e.target.closest('input[type=color]');
+    if (!inp) { if (pop && !e.target.closest('.swatch-pop')) close(); return; }
+    e.preventDefault(); close();
+    pop = document.createElement('div'); pop.className = 'swatch-pop';
+    pop.innerHTML = CONFIG.filaments.map((f) => `<button style="background:${f.hex}" title="${f.name}" data-hex="${f.hex}" class="${f.hex.toLowerCase() === inp.value.toLowerCase() ? 'on' : ''}"></button>`).join('') + '<small>الألوان المتوفرة عندنا</small>';
+    document.body.appendChild(pop);
+    const r = inp.getBoundingClientRect(), pw = pop.offsetWidth;
+    pop.style.top = `${window.scrollY + r.bottom + 6}px`;
+    pop.style.left = `${Math.max(8, Math.min(window.innerWidth - pw - 8, r.left + r.width / 2 - pw / 2))}px`;
+    pop.onclick = (ev) => {
+      const b = ev.target.closest('[data-hex]'); if (!b) return;
+      inp.value = b.dataset.hex; inp.dispatchEvent(new Event('input', { bubbles: true })); close();
+    };
+  }, true);
+  window.addEventListener('scroll', close, { passive: true });
+}
+
+/* ================= صمّم لي ================= */
+const CU = { files: [] };
+function cuThumbs() { $('#cuThumbs').innerHTML = CU.files.map((it, i) => `<div class="thumb"><img src="${it.url}" alt=""><button data-rm="${i}" aria-label="إزالة">✕</button></div>`).join(''); }
+setupDrop($('#cuDrop'), $('#cuFiles'), (files) => {
+  for (const f of files) if (f.type.startsWith('image/') && CU.files.length < 8) CU.files.push({ file: f, url: URL.createObjectURL(f) });
+  cuThumbs();
+});
+$('#cuThumbs').addEventListener('click', (e) => { const rm = e.target.closest('[data-rm]'); if (rm) { URL.revokeObjectURL(CU.files[+rm.dataset.rm].url); CU.files.splice(+rm.dataset.rm, 1); cuThumbs(); } });
+['cuName', 'cuPhone'].forEach((id) => { $('#' + id).value = store.get(id, store.get(id === 'cuName' ? 'oName' : 'oPhone', '')); $('#' + id).addEventListener('change', (e) => store.set(id, e.target.value)); });
+$('#cuSend').onclick = async () => {
+  const desc = $('#cuDesc').value.trim();
+  if (!desc) { toast('اكتب وصف الفكرة أولاً'); $('#cuDesc').focus(); return; }
+  const v = (id) => $('#' + id).value.trim();
+  const text = ['مرحباً، عندي طلب تصميم خاص ✍️', `• النوع: ${v('cuType')}`, `• الفكرة: ${desc}`,
+    v('cuSize') && `• المقاس: ${v('cuSize')} مم`, `• الكمية: ${v('cuQty') || 1}`, v('cuColors') && `• الألوان: ${v('cuColors')}`,
+    v('cuDate') && `• موعد التسليم: ${v('cuDate')}`, v('cuBudget') && `• الميزانية: ${v('cuBudget')} ${CONFIG.currency}`,
+    `• الاسم: ${v('cuName') || '—'}`, `• الجوال: ${v('cuPhone') || '—'}`, CU.files.length ? `• صور مرجعية: ${CU.files.length}` : ''].filter(Boolean).join('\n');
+  const files = CU.files.map((x) => x.file);
+  if (files.length && !CONFIG.whatsapp && navigator.canShare?.({ files })) {
+    try { await navigator.share({ files, text }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
+  if (files.length) toast('أرفق الصور المرجعية في محادثة الواتساب 📎', 4000);
+};
+
+/* ================= جولة تعريفية ================= */
+const TOUR = [
+  ['👋', 'أهلاً بك!', 'هنا تصمّم مجسمات وميداليات 3D جاهزة للطباعة — بدون تسجيل وبدون برامج.'],
+  ['🧊', 'اختر وصمّم', 'من «مجسمات 3D» أو «صمّم ميدالية»: اختر الشكل، اكتب الاسم، حط شعارك، واختر لون كل قطعة.'],
+  ['📱', 'شوفه قبل ما تطلب', 'دوّره بإصبعك، قارن حجمه ببطاقة بنكية 📏، أو شوفه على طاولتك بالواقع المعزز AR.'],
+  ['🛒', 'اطلب أو حمّل', 'اطلبه طباعة واتساب بأسعار الجملة، أو حمّل ملف STL / 3MF لو عندك طابعة. وعندك فكرة خاصة؟ «صمّم لي».'],
+];
+function startTour() {
+  let i = 0;
+  const m = modal('<div class="tour"></div>');
+  const draw = () => {
+    const [ic, t, d] = TOUR[i];
+    m.querySelector('.tour').innerHTML = `<div class="tour-ic">${ic}</div><h3>${t}</h3><p>${d}</p>
+      <div class="tour-dots">${TOUR.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="actions"><button class="btn ghost" data-t="skip">تخطي</button>${i ? '<button class="btn" data-t="prev">السابق</button>' : ''}<button class="btn primary" data-t="next">${i === TOUR.length - 1 ? 'يلا نبدأ 🚀' : 'التالي'}</button></div>`;
+  };
+  m.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-t]')?.dataset.t; if (!a) return;
+    if (a === 'next' && i < TOUR.length - 1) { i++; draw(); }
+    else if (a === 'prev') { i--; draw(); }
+    else { m.close(); if (a === 'next') go('cup3d'); }
+  });
+  m.onclose = () => store.set('tour_done', true);
+  draw();
+}
+$('#tourBtn').onclick = (e) => { e.preventDefault(); e.stopPropagation(); startTour(); };
+if (!store.get('tour_done', false) && !location.hash.includes('?d=') && !navigator.webdriver) setTimeout(startTour, 1500);
 
 /* ================= الهوية ================= */
 if (CONFIG.logo) { const l = $('#brandLogo'); l.src = CONFIG.logo; l.hidden = false; $('.brand svg').style.display = 'none'; }
@@ -881,6 +1032,12 @@ $('#aGLBdl').onclick = () => { if (A.glb) download(new Blob([A.glb], { type: 'mo
     const col = CUP_PRESETS[0];
     built.push(buildCup(cp).parts.map((p) => ({ ...p, color: col[p.key] })));
     v.show(built[0]); v.camera.position.set(22, -62, 44); v.controls.target.set(0, 0, 22); v.dirty = true;
+  } catch (e) { console.error(e); }
+  try {
+    for (const [m, size, cols] of [['dallah', 50, null], ['mug', 36, null]]) {
+      const M = MODELS[m], col = cols || Object.fromEntries(M.parts.map(([k, , d]) => [k, d]));
+      built.push(buildModel({ model: m, size, content: 'beans', backContent: 'none', segments: 96, font: 'Cairo', text1: '', loop: true }).map((p) => ({ ...p, color: col[p.key] })));
+    }
   } catch (e) { console.error(e); }
   for (const d of designs) {
     const P = { ...base, ...d };

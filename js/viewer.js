@@ -83,6 +83,7 @@ export class Viewer {
       this.controls.target.set(0, 0, size.z / 2);
     }
     this.dirty = true;
+    this.placeRef();
     return size;
   }
   showObject(obj) {
@@ -96,6 +97,28 @@ export class Viewer {
     this.camera.position.set(r * 0.4, -r * 1.3, r * 1.3);
     this.controls.target.set(0, 0, size.z / 2);
     return size;
+  }
+  /** مقارنة الحجم: بطاقة بنكية بالمقاس الحقيقي بجانب المجسم */
+  toggleRef() {
+    if (this.ref) { this.spin.remove(this.ref); this.ref.geometry.dispose(); for (const m of this.ref.material) { m.map?.dispose(); m.dispose(); } this.ref = null; this.dirty = true; return false; }
+    const c = document.createElement('canvas'); c.width = 512; c.height = 323;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 512, 323); g.addColorStop(0, '#2c5f9e'); g.addColorStop(1, '#173a66');
+    x.fillStyle = g; x.fillRect(0, 0, 512, 323);
+    x.fillStyle = '#d9b44a'; x.fillRect(48, 110, 70, 54);
+    x.fillStyle = 'rgba(255,255,255,.9)'; x.font = 'bold 34px sans-serif'; x.fillText('85.6 × 54 mm', 48, 250);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = [new THREE.MeshStandardMaterial({ color: 0x1f4a80 }), new THREE.MeshStandardMaterial({ color: 0x1f4a80 }), new THREE.MeshStandardMaterial({ color: 0x1f4a80 }), new THREE.MeshStandardMaterial({ color: 0x1f4a80 }), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }), new THREE.MeshStandardMaterial({ color: 0x1f4a80 })];
+    this.ref = new THREE.Mesh(new THREE.BoxGeometry(85.6, 53.98, 0.76), mat);
+    this.spin.add(this.ref); this.placeRef();
+    const box = new THREE.Box3().setFromObject(this.spin), r = box.getSize(new THREE.Vector3()).length();
+    this.camera.position.set(r * 0.15, -r * 1.1, r * 0.9); this.controls.target.copy(box.getCenter(new THREE.Vector3())).setZ(0);
+    this.dirty = true; return true;
+  }
+  placeRef() {
+    if (!this.ref) return;
+    const b = new THREE.Box3().setFromObject(this.group);
+    this.ref.position.set(b.max.x + 8 + 42.8, (b.min.y + b.max.y) / 2, 0.38);
   }
   setColor(hex) {
     this.color = hex;

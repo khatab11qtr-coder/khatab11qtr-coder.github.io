@@ -589,6 +589,33 @@ export const TEMPLATES = {
       };
     },
   },
+  plaque: {
+    label: 'لوحة باب / مكتب', icon: '🚪', sizeLabel: 'العرض', group: 'home', def: 150, max: 220,
+    build(P) {
+      const W = P.size, H = W * 0.36, hr = Math.min(P.hole / 2, W * 0.018);
+      const base = new Path2D(); roundRect(base, 0, 0, W, H, H * 0.12);
+      const ix = W * 0.085, iy = H * 0.12;
+      return {
+        W, H, base, hole: [W * 0.042, H / 2], holeR: hr, holeFixed: true, extraHoles: [[W * 0.958, H / 2, hr]],
+        logoBox: [W / 2 - H * 0.2, iy + H * 0.06, H * 0.4, H * 0.22],
+        backBox: { cx: W / 2, cy: H / 2, w: W * 0.6, h: H * 0.4 },
+        raised(ctx, lw, Hh) {
+          ctx.lineWidth = lw;
+          ctx.beginPath(); roundRect(ctx, ix, iy, W - ix * 2, H - iy * 2, H * 0.08); ctx.stroke();
+          if (P.decor) for (const [x, y] of [[ix, iy], [W - ix, iy], [ix, H - iy], [W - ix, H - iy]]) {
+            const d = H * 0.06; ctx.beginPath(); ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.closePath(); ctx.fill();
+          }
+        },
+        text(ctx, Hh) {
+          const top = Hh.decorLogo ? iy + H * 0.3 : iy;
+          if (P.text2) {
+            Hh.name(W / 2, top + (H - iy - top) * 0.42, W - ix * 2.6, (H - iy - top) * 0.5);
+            Hh.sub(W / 2, top + (H - iy - top) * 0.8, W - ix * 3, (H - iy - top) * 0.17);
+          } else Hh.name(W / 2, (top + H - iy) / 2, W - ix * 2.6, (H - iy - top) * 0.62);
+        },
+      };
+    },
+  },
   coaster: {
     label: 'مسند أكواب', icon: '⭕', sizeLabel: 'القطر', group: 'home', def: 90,
     build(P) {
@@ -778,6 +805,7 @@ export function rasterize(P) {
     const Hh = mk();
     holeR = T.holeFixed ? T.holeR : Math.min(P.hole / 2, T.holeR ?? Infinity);
     Hh.ctx.beginPath(); Hh.ctx.arc(T.hole[0], T.hole[1], holeR, 0, Math.PI * 2); Hh.ctx.fill();
+    for (const [x, y, r] of T.extraHoles || []) { Hh.ctx.beginPath(); Hh.ctx.arc(x, y, r, 0, Math.PI * 2); Hh.ctx.fill(); }
     holeF = read(Hh);
   }
 
@@ -795,7 +823,10 @@ export function rasterize(P) {
   const Rr = mk();
   const hr = helper(Rr.ctx); hr.decorLogo = P._hasDecorLogo && !!T.logoBox;
   Rr.ctx.save(); Rr.ctx.clip(T.clipPath || T.base); T.raised(Rr.ctx, P.lineW, hr); Rr.ctx.restore();
-  if (P.border && !T.noHole) { Rr.ctx.lineWidth = P.borderW; Rr.ctx.beginPath(); Rr.ctx.arc(T.hole[0], T.hole[1], holeR + P.borderW / 2, 0, Math.PI * 2); Rr.ctx.stroke(); }
+  if (P.border && !T.noHole) {
+    Rr.ctx.lineWidth = P.borderW;
+    for (const [x, y, r] of [[T.hole[0], T.hole[1], holeR], ...(T.extraHoles || [])]) { Rr.ctx.beginPath(); Rr.ctx.arc(x, y, r + P.borderW / 2, 0, Math.PI * 2); Rr.ctx.stroke(); }
+  }
   const raisedF = read(Rr);
   // الإطار البارز = حافة الشكل الخارجية فقط (من الحقل، حتى لا تظهر خطوط تداخل الأجزاء)
   if (P.border && !logoF) {
@@ -886,4 +917,23 @@ export function buildSolids(R) {
     if (t.length) out[L.part].push(t);
   }
   return { base: mergeTris(out.base), accent: mergeTris(out.accent) };
+}
+
+/** نفس buildSolids لكن في عامل خلفي (مع رجوع للطريقة العادية لو ما اشتغل) */
+let worker = null, wid = 0;
+const waiting = new Map();
+export function buildSolidsAsync(R) {
+  try {
+    if (!worker) {
+      worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+      worker.onmessage = ({ data }) => { const p = waiting.get(data.id); if (!p) return; waiting.delete(data.id); data.error ? p.reject(new Error(data.error)) : p.resolve({ base: data.base, accent: data.accent }); };
+      worker.onerror = () => { for (const p of waiting.values()) p.fallback(); waiting.clear(); worker = 'broken'; };
+    }
+    if (worker === 'broken') return Promise.resolve(buildSolids(R));
+    const id = ++wid;
+    return new Promise((resolve, reject) => {
+      waiting.set(id, { resolve, reject, fallback: () => resolve(buildSolids(R)) });
+      worker.postMessage({ id, w: R.w, h: R.h, px: R.px, layers: R.layers.map((L) => ({ f: L.f, z0: L.z0, z1: L.z1, part: L.part })) });
+    });
+  } catch { return Promise.resolve(buildSolids(R)); }
 }

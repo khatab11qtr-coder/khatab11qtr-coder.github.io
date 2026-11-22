@@ -284,3 +284,21 @@ html[dir="ltr"] .modal-box h3 { margin: 0 0 12px 40px; }
 html[dir="ltr"] .field label a { float: right; }
 #installBtn { margin: 4px auto 10px; display: block; }
 #installBtn[hidden] { display: none; }
+.c-font, .m-letters { display: none; }
+body.cc-text .c-font, body.cc-beans_text .c-font, body.mod-letters .c-font, body.mod-letters .m-letters { display: block; }
+body.nodeco .m-deco, body.nodeco .c-text, body.nodeco .c-text2, body.nodeco .c-logo, body.noback .m-back, body.noback .c-back { display: none !important; }
+.m-sleeve { display: none; }
+body.mod-takeaway .m-sleeve { display: flex; }
+#cModels { grid-template-columns: repeat(4, 1fr); margin-bottom: 6px; }
+.swatch-pop { position: absolute; z-index: 70; display: grid; grid-template-columns: repeat(5, 30px); gap: 6px; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.swatch-pop button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; }
+.swatch-pop button.on, .swatch-pop button:hover { outline: 3px solid var(--accent); outline-offset: 1px; }
+.swatch-pop small { grid-column: 1 / -1; text-align: center; color: var(--muted); font-weight: 700; }
+.tour { text-align: center; padding: 10px 6px 0; }
+.tour-ic { font-size: 3.2rem; }
+.tour h3 { margin: 8px 0 !important; font-size: 1.4rem; }
+.tour p { color: var(--muted); line-height: 1.9; min-height: 4.5em; }
+.tour-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 16px; }
+.tour-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.tour-dots i.on { background: var(--accent); width: 22px; border-radius: 6px; }
+.tour .actions { justify-content: center; }

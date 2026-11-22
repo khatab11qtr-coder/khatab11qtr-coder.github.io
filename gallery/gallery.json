@@ -6,6 +6,73 @@
   "go": "cup3d"
  },
  {
+  "img": "m_dallah.png",
+  "title": "دلة 3D مجسّمة",
+  "desc": "دلة كاملة بمصب ومقبض وغطاء — وتكتب عليها اسمك.",
+  "preset": {
+   "page": "cup3d",
+   "model": "dallah",
+   "size": 50,
+   "content": "text",
+   "text1": "قهوتنا",
+   "font": "Reem Kufi"
+  }
+ },
+ {
+  "img": "m_letters.png",
+  "title": "اسم بحروف واقفة",
+  "desc": "اسمك أو اسم الكوفي بحروف 3D على قاعدة — للمكتب أو الكاونتر.",
+  "preset": {
+   "page": "cup3d",
+   "model": "letters",
+   "size": 30,
+   "text1": "قهوتي",
+   "font": "Lalezar",
+   "colors": {
+    "letters": "#d4a017",
+    "base": "#1a1a1a"
+   }
+  }
+ },
+ {
+  "img": "m_mug.png",
+  "title": "مج بالاسم",
+  "desc": "مج صغير بالمقبض — المقبض نفسه مكان الحلقة.",
+  "preset": {
+   "page": "cup3d",
+   "model": "mug",
+   "size": 36,
+   "content": "text",
+   "text1": "Bean House"
+  }
+ },
+ {
+  "img": "m_phonestand.png",
+  "title": "حامل جوال بالشعار",
+  "desc": "حامل للكاونتر أو المكتب واسم الكوفي على الواجهة.",
+  "preset": {
+   "page": "cup3d",
+   "model": "phonestand",
+   "size": 70,
+   "content": "text",
+   "text1": "Bean House"
+  }
+ },
+ {
+  "img": "plaque.png",
+  "title": "لوحة باب باسم العائلة",
+  "desc": "لوحة بإطار وزخرفة وثقبين للتركيب — حتى 22 سم.",
+  "preset": {
+   "template": "plaque",
+   "text1": "عائلة الخطاب",
+   "text2": "AL KHATTAB FAMILY",
+   "size": 150,
+   "font": "Reem Kufi",
+   "c1": "#2a1d13",
+   "c2": "#e8c76a"
+  }
+ },
+ {
   "img": "cup.png",
   "title": "كوب تيك أواي",
   "desc": "الاسم بارز على الكم مع غطاء وحلقة — الأكثر طلباً للكوفيهات.",
