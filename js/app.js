@@ -970,7 +970,7 @@ function aThumbs() {
   $('#aThumbs').innerHTML = A.imgs.map((it, i) => `<div class="thumb"><img src="${it.url}" alt=""><button data-rm="${i}" aria-label="إزالة">✕</button></div>`).join('');
 }
 setupDrop($('#aDrop'), $('#aFiles'), async (files) => {
-  for (const f of files) if (f.type.startsWith('image/') && A.imgs.length < 4) A.imgs.push(await loadImage(f));
+  for (const f of files) if (f.type.startsWith('image/') && A.imgs.length < 4) A.imgs.push({ ...(await loadImage(f)), file: f });
   if (files.length && A.imgs.length >= 4) toast('الحد الأقصى 4 صور');
   aThumbs();
 });
@@ -1003,6 +1003,12 @@ $('#aGo').onclick = async () => {
     const msg = /Failed to fetch|NetworkError/i.test(e.message) ? 'تعذر الاتصال بخادم Meshy (تحقق من الإنترنت أو المفتاح)' : e.message;
     setP(0, 'خطأ: ' + msg); toast(msg, 5000);
   } finally { A.abort = null; $('#aGo').textContent = '🧠 ابدأ التوليد'; }
+};
+$('#aSend').onclick = () => {
+  if (!A.imgs.length) return toast('ارفع صورة الشيء أولاً');
+  CU.files = A.imgs.map((x) => ({ file: x.file, url: URL.createObjectURL(x.file) })); cuThumbs();
+  $('#cuType').value = 'مجسم / تمثال صغير'; $('#cuDesc').value ||= 'حوّلوا لي الصور المرفقة إلى مجسم 3D كامل جاهز للطباعة.';
+  go('custom'); toast('أضفنا صورك — أكمل التفاصيل وأرسلها 👍');
 };
 $('#aGLB').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
