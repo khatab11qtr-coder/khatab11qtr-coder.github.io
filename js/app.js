@@ -4,6 +4,7 @@ import { toSTL, volumeOf, bboxOf, mergeTris } from './mesh.js';
 import { TEMPLATES, rasterize, buildSolids, makeStencil } from './keychain.js';
 import { lithophane, relief, faceRelief, cookieCutter, removeBackground } from './photo.js';
 import { export3MF, arrange, bedOutline, BEDS } from './export.js';
+import { buildCup } from './cup3d.js';
 import * as AI from './ai.js';
 
 /* ================= أدوات عامة ================= */
@@ -78,6 +79,7 @@ function go(id, push = true) {
   if (push) history.replaceState(null, '', '#' + id);
   window.scrollTo({ top: 0, behavior: push ? 'smooth' : 'auto' });
   if (id === 'keychain') K.ensure();
+  if (id === 'cup3d') C3.ensure();
   if (id === 'order') O.render();
   if (id === 'gallery') G.load();
 }
@@ -469,12 +471,134 @@ $('#pAll').onclick = async () => {
   finally { btn.disabled = false; btn.textContent = '📦 تحويل كل الصور ZIP'; }
 };
 
+/* ================= كوب 3D ================= */
+const CUP_PRESETS = [
+  { lid: '#3a2a22', cup: '#f1e6cf', sleeve: '#8a5a36', deco: '#6b4226', loop: '#d4a017' },
+  { lid: '#ffffff', cup: '#ffffff', sleeve: '#00704a', deco: '#ffffff', loop: '#c0c0c0' },
+  { lid: '#111111', cup: '#2b2b2b', sleeve: '#c8a165', deco: '#111111', loop: '#d4a017' },
+  { lid: '#f4c2c2', cup: '#fff5f5', sleeve: '#d16d8a', deco: '#fff5f5', loop: '#e8e8e8' },
+  { lid: '#1f3b57', cup: '#e6f2ff', sleeve: '#4a90c2', deco: '#ffffff', loop: '#d4a017' },
+  { lid: '#1e4d3a', cup: '#f3efe2', sleeve: '#c9a227', deco: '#1e4d3a', loop: '#c9a227' },
+];
+const CK = ['lid', 'cup', 'sleeve', 'deco', 'loop'];
+const cId = (k) => '#c' + k[0].toUpperCase() + k.slice(1);
+const C3 = {
+  view: null, parts: null, P: null, logo: null, stencil: null, busy: false, pending: false,
+  ensure() { if (!this.view) { this.view = new Viewer($('#cView')); this.view.autoRotate = true; this.update(); } },
+  colors() { return Object.fromEntries(CK.map((k) => [k, $(cId(k)).value])); },
+  read() {
+    return {
+      height: +$('#cHeight').value, content: $('#cContent').value, text1: $('#cText1').value.trim(), text2: $('#cText2').value.trim(),
+      font: $('#cFont').value, backContent: $('#cBack').value, backText: $('#cBackText').value.trim(),
+      sleeve: $('#cSleeveOn').checked, loop: $('#cLoopOn').checked, hole: +$('#cHole').value, segments: +$('#cSeg').value,
+      logoStencil: this.stencil, colors: this.colors(),
+    };
+  },
+  sync() {
+    const old = [...document.body.classList].filter((c) => /^c[cb]-/.test(c));
+    for (const c of old) document.body.classList.toggle(c, false);
+    document.body.classList.add('cc-' + $('#cContent').value, 'cb-' + $('#cBack').value);
+  },
+  makeStencil() {
+    if (!this.logo) return;
+    if ($('#cBg').checked && !this.logo.clean) this.logo.clean = removeBackground(this.logo.img);
+    const src = $('#cBg').checked ? this.logo.clean : this.logo.img;
+    this.stencil = makeStencil(src, { hasAlpha: alphaFrac(src) > 0.02, threshold: +$('#cThresh').value }).detail;
+  },
+  async update() {
+    if (!this.view) return;
+    if (this.busy) { this.pending = true; return; }
+    this.busy = true; $('#cBusy').hidden = false; await nextFrame();
+    try {
+      const P = this.read();
+      try { await Promise.all([document.fonts.load(`800 40px "${P.font}"`, P.text1 + P.backText || 'a'), document.fonts.load(`700 40px "${P.font}"`, P.text2 || 'a')]); } catch {}
+      const out = buildCup(P);
+      const first = !this.parts;
+      this.parts = out.parts.map((p) => ({ ...p, color: P.colors[p.key] }));
+      this.P = P; this.info = out.info;
+      this.view.show(this.parts, { keepView: !first && this.lastH === P.height });
+      if (!first && this.lastH === P.height) { /* نحافظ على زاوية المستخدم */ } else {
+        const s = P.height; this.view.camera.position.set(s * 0.75, -s * 2.05, s * 1.3); this.view.controls.target.set(0, 0, s * 0.62); this.view.dirty = true;
+      }
+      this.lastH = P.height;
+      const full = mergeTris(this.parts.map((p) => p.tris));
+      this.stats = costStats(full);
+      $('#cStats').innerHTML = this.stats.html;
+      const w = [];
+      if (P.content === 'logo' && !P.logoStencil) w.push('ارفع صورة الشعار.');
+      if ((P.content === 'text' || P.content === 'beans_text') && !P.text1) w.push('اكتب النص اللي تبيه على الكم.');
+      if (P.height < 32 && ['text', 'beans_text'].includes(P.content) && P.text1.length > 10) w.push('النص طويل على كوب صغير — كبّر الكوب أو اختصر الكتابة حتى تكون مقروءة.');
+      $('#cWarn').hidden = !w.length; $('#cWarn').innerHTML = w.map((x) => '⚠️ ' + x).join('<br>');
+    } catch (e) { console.error(e); toast('تعذر توليد الكوب: ' + e.message); }
+    finally {
+      this.busy = false; $('#cBusy').hidden = true;
+      if (this.pending) { this.pending = false; this.update(); }
+    }
+  },
+  recolor() {
+    const c = this.colors();
+    if (this.parts) this.parts.forEach((p, i) => { p.color = c[p.key]; this.view.group.children[i]?.material.color.set(c[p.key]); });
+    if (this.P) this.P.colors = c;
+    if (this.view) this.view.dirty = true;
+  },
+  base() { return `cup3d_${safeName(this.P?.text1 || 'coffee')}_${this.P?.height}mm`; },
+};
+$('#cPresets').innerHTML = CUP_PRESETS.map((p, i) => `<button data-i="${i}" title="ألوان جاهزة">${CK.map((k) => `<i style="background:${p[k]}"></i>`).join('')}</button>`).join('');
+$('#cPresets').onclick = (e) => {
+  const b = e.target.closest('[data-i]'); if (!b) return;
+  const p = CUP_PRESETS[+b.dataset.i]; CK.forEach((k) => ($(cId(k)).value = p[k])); C3.recolor();
+};
+const cUpd = debounce(() => C3.update(), 300);
+$$('#cup3d .panel input, #cup3d .panel select').forEach((el) => {
+  if (el.id === 'cLogo') return;
+  el.addEventListener('input', () => {
+    const o = $('#' + el.id + 'O'); if (o) o.textContent = el.value;
+    if (el.type === 'color') { C3.recolor(); return; }
+    if (el.id === 'cContent' || el.id === 'cBack') C3.sync();
+    if ((el.id === 'cBg' || el.id === 'cThresh') && C3.logo) C3.makeStencil();
+    cUpd();
+  });
+});
+$('#cLogo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { C3.logo = await loadImage(f); C3.makeStencil(); $('#cContent').value = 'logo'; C3.sync(); C3.update(); } catch (err) { toast(err.message); }
+});
+C3.sync();
+$('#cRot').onclick = (e) => { C3.view.autoRotate = !C3.view.autoRotate; e.currentTarget.classList.toggle('on', C3.view.autoRotate); };
+$('#c3MF').onclick = async () => { if (!C3.parts) return; download(await export3MF([{ name: C3.base(), parts: C3.parts }]), C3.base() + '.3mf'); toast('3MF ملوّن جاهز ✓'); };
+$('#cSTL').onclick = () => { if (C3.parts) download(toSTL(mergeTris(C3.parts.map((p) => p.tris)), 'cup3d'), C3.base() + '.stl'); };
+$('#cZip').onclick = async () => {
+  if (!C3.parts) return;
+  const zip = new JSZip();
+  C3.parts.forEach((p, i) => zip.file(`${i + 1}_${p.key}_${p.color.slice(1)}.stl`, toSTL(p.tris, p.key)));
+  zip.file('README.txt', 'استورد كل الملفات معاً كقطعة واحدة متعددة الأجزاء، واختر لون كل جزء.\n');
+  download(await zip.generateAsync({ type: 'blob' }), C3.base() + '_parts.zip');
+};
+$('#cPNG').onclick = () => fetch(C3.view.snapshot()).then((r) => r.blob()).then((b) => download(b, C3.base() + '.png'));
+$('#cOrder').onclick = () => { O.source = 'cup3d'; go('order'); };
+
 /* ================= الطلب ================= */
 const MODE_LABEL = { lithophane: 'ليثوفين', relief: 'نقش بارز', face: 'نقش وجه', keychain: 'ميدالية من صورة', cookie: 'قالب كوكيز' };
 const O = {
   source: 'keychain', img: null,
   tier(q) { return [...CONFIG.tiers].reverse().find((t) => q >= t.min) || { off: 0 }; },
   info() {
+    if (this.source === 'cup3d' && C3.parts) {
+      const P = C3.P, CL = { beans: 'حبتين قهوة', text: 'كتابة', beans_text: 'حبوب + اسم', logo: 'شعار', none: '—' };
+      const names = { lid: 'الغطاء', cup: 'الكوب', sleeve: 'الكم', deco: 'النقش', loop: 'الحلقة' };
+      return {
+        title: 'ميدالية كوب 3D', unit: C3.stats.price,
+        rows: [
+          ['النوع', '🥤 كوب 3D'], ['الارتفاع', `${P.height} مم`], ['النقش', CL[P.content]],
+          ['الكتابة', ['text', 'beans_text'].includes(P.content) ? [P.text1, P.text2].filter(Boolean).join(' / ') : '—'],
+          ['الخلف', P.backContent === 'text' ? P.backText : P.backContent === 'beans' ? 'حبتين قهوة' : '—'],
+          ['الألوان', C3.parts.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
+        ],
+        colorsText: C3.parts.map((p) => `${names[p.key]} ${p.color}`).join('، '),
+        snap: () => C3.view.snapshot(),
+        files: async () => [[C3.base() + '.3mf', await export3MF([{ name: C3.base(), parts: C3.parts }])], [C3.base() + '.stl', toSTL(mergeTris(C3.parts.map((p) => p.tris)))]],
+      };
+    }
     if (this.source === 'photo' && PH.last) {
       return {
         title: `${MODE_LABEL[PH.last.mode]} من صورة`, unit: PH.last.stats.price,
@@ -499,6 +623,7 @@ const O = {
     };
   },
   async render() {
+    if (this.source === 'cup3d' && !C3.parts) { C3.ensure(); await new Promise((r) => setTimeout(r, 1500)); }
     if (this.source === 'keychain') {
       if (!K.view) { K.ensure(); await new Promise((r) => setTimeout(r, 900)); }
       else if (K.platePreview) await K.update();
@@ -526,6 +651,7 @@ const O = {
     const c = this.calc(); if (!c) return '';
     const rows = c.I.rows.filter(([k]) => k !== 'الألوان').map(([k, v]) => `• ${k}: ${v}`);
     if (this.source === 'keychain' && K.P) rows.push(`• الألوان: ${K.P.c1} / ${K.P.c2}`);
+    if (c.I.colorsText) rows.push(`• الألوان: ${c.I.colorsText}`);
     return [`مرحباً، أبي أطلب طباعة: ${c.I.title}`, ...rows, `• الكمية: ${c.q}`,
       `• السعر التقريبي: ${fmt(c.total, 0)} ${CONFIG.currency}${c.t.off ? ` (خصم ${c.t.off}٪)` : ''}`,
       `• الاستلام: ${$('#oDelivery').value}`, `• الاسم: ${$('#oName').value || '—'}`, `• الجوال: ${$('#oPhone').value || '—'}`,
@@ -555,7 +681,7 @@ const G = {
     if (this.loaded) return; this.loaded = true;
     try {
       const list = await (await fetch('gallery/gallery.json')).json();
-      $('#galleryGrid').innerHTML = list.map((g, i) => `<article class="gcard"><img src="gallery/${g.img}" alt="${escapeHTML(g.title)}" loading="lazy"><div><h3>${escapeHTML(g.title)}</h3><p>${escapeHTML(g.desc || '')}</p>${g.preset ? `<button class="btn small" data-preset="${i}">✏️ صمّم مثلها</button>` : ''}</div></article>`).join('');
+      $('#galleryGrid').innerHTML = list.map((g, i) => `<article class="gcard"><img src="gallery/${g.img}" alt="${escapeHTML(g.title)}" loading="lazy"><div><h3>${escapeHTML(g.title)}</h3><p>${escapeHTML(g.desc || '')}</p>${g.preset ? `<button class="btn small" data-preset="${i}">✏️ صمّم مثلها</button>` : g.go ? `<button class="btn small" data-go="${g.go}">✏️ صمّم مثلها</button>` : ''}</div></article>`).join('');
       $('#galleryGrid').onclick = (e) => {
         const b = e.target.closest('[data-preset]'); if (!b) return;
         const def = K.read(); K.write({ ...def, ...list[+b.dataset.preset].preset }); go('keychain'); K.update();
@@ -630,16 +756,25 @@ $('#aGLBdl').onclick = () => { if (A.glb) download(new Blob([A.glb], { type: 'mo
   const base = { ...K.read(), res: 0.25, back: 'none', logoStencil: null, logoShape: null };
   await K.fonts(base);
   const built = [];
+  try {
+    const cp = { height: 40, content: 'beans', backContent: 'none', sleeve: true, loop: true, hole: 4.5, segments: 96, font: 'Cairo', text1: '', text2: '', backText: '' };
+    const col = CUP_PRESETS[0];
+    built.push(buildCup(cp).parts.map((p) => ({ ...p, color: col[p.key] })));
+    v.show(built[0]); v.camera.position.set(22, -62, 44); v.controls.target.set(0, 0, 22); v.dirty = true;
+  } catch (e) { console.error(e); }
   for (const d of designs) {
     const P = { ...base, ...d };
     try { built.push(K.parts(buildSolids(rasterize(P)), P)); } catch (e) { console.error(e); }
-    if (built.length === 1) { v.show(built[0]); v.camera.position.set(0, -42, 82); v.controls.target.set(0, 0, 2); v.dirty = true; }
+    if (built.length === 1 && !built[0][0].key) { v.show(built[0]); v.camera.position.set(0, -42, 82); v.controls.target.set(0, 0, 2); v.dirty = true; }
     await nextFrame();
   }
   let i = 0;
   setInterval(() => {
     if (!$('#home').classList.contains('active') || document.hidden) return;
     i = (i + 1) % built.length; v.show(built[i], { keepView: true });
+    if (built[i][0].key) { v.camera.position.set(22, -62, 44); v.controls.target.set(0, 0, 22); }
+    else { v.camera.position.set(0, -42, 82); v.controls.target.set(0, 0, 2); }
+    v.dirty = true;
   }, 4000);
 })();
 

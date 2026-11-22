@@ -14,7 +14,7 @@ export class Viewer {
     this.camera.position.set(60, -90, 90);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x665544, 2.0));
     const d1 = new THREE.DirectionalLight(0xffffff, 1.6); d1.position.set(50, -80, 120); this.scene.add(d1);
     const d2 = new THREE.DirectionalLight(0xffeedd, 0.7); d2.position.set(-80, 60, 40); this.scene.add(d2);
     this.grid = new THREE.GridHelper(200, 20, 0x888888, 0x444444);

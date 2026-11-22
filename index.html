@@ -29,6 +29,7 @@
   <nav class="tabs" role="tablist">
     <button data-go="home" class="active">الرئيسية</button>
     <button data-go="keychain">صمّم ميدالية</button>
+    <button data-go="cup3d">☕ كوب 3D</button>
     <button data-go="photo">صورة ← مجسم</button>
     <button data-go="ai">مجسم كامل AI</button>
     <button data-go="gallery">أعمالنا</button>
@@ -47,7 +48,8 @@
       <h1>صمّم مجسمك ثلاثي الأبعاد<br><em>واطبعه اليوم</em></h1>
       <p>ميداليات بأشكال القهوة باسم الكوفي أو شعاره، ستاندات QR للطاولات، مساند أكواب، وتحويل صورك لمجسمات — كله داخل متصفحك وصورك ما تطلع من جهازك.</p>
       <div class="cta">
-        <button class="btn primary" data-go="keychain">☕ صمّم ميدالية</button>
+        <button class="btn primary" data-go="cup3d">☕ كوب 3D بألوانك</button>
+        <button class="btn ghost" data-go="keychain">🏷️ صمّم ميدالية</button>
         <button class="btn ghost" data-go="photo">🖼️ حوّل صورة لمجسم</button>
         <button class="btn ghost" data-go="order">🛒 اطلب طباعة</button>
       </div>
@@ -56,6 +58,7 @@
   </div>
 
   <div class="features">
+    <article class="card" data-go="cup3d"><div class="ficon">🥤</div><h3>كوب 3D كامل</h3><p>ميدالية كوب مجسّم بغطاء وكم وحلقة — اختر لون كل قطعة واكتب اسمك أو حط شعارك على الكم.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">☕</div><h3>8 أشكال قهوة</h3><p>تيك أواي، آيس، مج، حبة قهوة، دلة، فنجان عربي، V60، ومكينة إسبريسو — بالاسم أو بشعار الكوفي.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">🔁</div><h3>ميدالية بوجهين</h3><p>الاسم من قدام، وحساب الانستقرام أو QR من ورا بلون ثاني مدموج في الطبقة الأولى.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">🪧</div><h3>ستاند QR ومساند أكواب</h3><p>لوحة منيو للطاولة مع قاعدة تركيب، ومسند أكواب منقوش باسم الكوفي.</p></article>
@@ -172,6 +175,70 @@
         <button class="btn wa" id="kOrder">🛒 اطلبها طباعة</button>
       </div>
       <div class="saved" id="kSaved"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== كوب 3D ===================== -->
+<section id="cup3d" class="page">
+  <div class="workspace">
+    <aside class="panel">
+      <h2>ميدالية كوب 3D</h2>
+      <p class="hint">مجسم كامل من كل الجهات — كل قطعة بلونها.</p>
+      <div class="field"><label for="cHeight">ارتفاع الكوب <output id="cHeightO">40</output> مم</label><input type="range" id="cHeight" min="25" max="90" value="40"></div>
+
+      <label class="lbl">الألوان</label>
+      <div class="colors5">
+        <label><input type="color" id="cLid" value="#3a2a22"><span>الغطاء</span></label>
+        <label><input type="color" id="cCup" value="#f1e6cf"><span>الكوب</span></label>
+        <label><input type="color" id="cSleeve" value="#8a5a36"><span>الكم</span></label>
+        <label><input type="color" id="cDeco" value="#6b4226"><span>النقش</span></label>
+        <label><input type="color" id="cLoop" value="#d4a017"><span>الحلقة</span></label>
+      </div>
+      <div class="presets" id="cPresets"></div>
+
+      <div class="field"><label for="cContent">النقش على الكم (الأمام)</label>
+        <select id="cContent"><option value="beans">☕ حبتين قهوة</option><option value="text">✍️ اسم / كتابة</option><option value="beans_text">حبوب + اسم</option><option value="logo">🖼️ شعار</option><option value="none">بدون</option></select></div>
+      <div class="field c-text"><label for="cText1">الكتابة</label><input id="cText1" value="Bean House" maxlength="30"></div>
+      <div class="field c-text2"><label for="cText2">سطر ثانٍ (اختياري)</label><input id="cText2" value="" maxlength="30"></div>
+      <div class="field c-text"><label for="cFont">الخط</label>
+        <select id="cFont"><option>Cairo</option><option>Tajawal</option><option>Reem Kufi</option><option>Lalezar</option><option>Changa</option><option>Lemonada</option></select></div>
+      <div class="field c-logo"><label for="cLogo">صورة الشعار</label><input type="file" id="cLogo" accept="image/*">
+        <label class="chk"><input type="checkbox" id="cBg" checked> إزالة الخلفية تلقائياً</label>
+        <div class="field"><label for="cThresh">العتبة <output id="cThreshO">128</output></label><input type="range" id="cThresh" min="20" max="240" value="128"></div>
+      </div>
+
+      <div class="field"><label for="cBack">خلف الكوب</label>
+        <select id="cBack"><option value="none">بدون</option><option value="text">كتابة</option><option value="beans">حبتين قهوة</option></select></div>
+      <div class="field c-back"><label for="cBackText">كتابة الخلف</label><input id="cBackText" dir="auto" value="@beanhouse" maxlength="30"></div>
+
+      <details class="more">
+        <summary>⚙️ إعدادات متقدمة</summary>
+        <div class="row2">
+          <label class="chk"><input type="checkbox" id="cSleeveOn" checked> الكم</label>
+          <label class="chk"><input type="checkbox" id="cLoopOn" checked> حلقة التعليق</label>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="cHole">فتحة الحلقة (مم)</label><input type="number" id="cHole" value="4.5" min="4" max="10" step="0.5"></div>
+          <div class="field"><label for="cSeg">النعومة</label><select id="cSeg"><option value="96">عادية</option><option value="160" selected>عالية</option><option value="256">فائقة</option></select></div>
+        </div>
+      </details>
+    </aside>
+    <div class="stage">
+      <div class="viewer" id="cView">
+        <div class="vtools"><button class="icon-btn on" id="cRot" title="تدوير تلقائي">⟳</button></div>
+        <div class="busy" id="cBusy" hidden>جارٍ التوليد…</div>
+      </div>
+      <div class="warn" id="cWarn" hidden></div>
+      <div class="stats" id="cStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="c3MF">🎨 3MF ملوّن</button>
+        <button class="btn" id="cSTL">⬇ STL</button>
+        <button class="btn" id="cZip">ملف لكل لون ZIP</button>
+        <button class="btn" id="cPNG">📷 صورة</button>
+        <button class="btn wa" id="cOrder">🛒 اطلبها طباعة</button>
+      </div>
+      <p class="hint">يُطبع واقفاً بدون دعامات (الحواف مشطوفة 45°). الألوان المتعددة تحتاج طابعة ملونة (AMS/MMU) — أو اطبعه بلون واحد ولوّنه.</p>
     </div>
   </div>
 </section>
@@ -348,6 +415,11 @@
   <div class="guide">
     <h2>دليل الطباعة السريع</h2>
     <div class="gcards">
+      <article class="card"><h3>🥤 كوب 3D</h3><ul>
+        <li>يُطبع واقف على قاعدته — الحواف مشطوفة 45° فما يحتاج دعامات.</li>
+        <li>افتح ملف 3MF في Bambu Studio / Orca: كل قطعة (غطاء، كوب، كم، نقش، حلقة) تطلع بلونها.</li>
+        <li>ارتفاع طبقة 0.12 مم للنقش، وجدران 3 خطوط، وتعبئة 15٪.</li>
+        <li>اربط الحلقة الذهبية المعدنية في حلقة التعليق بعد الطباعة.</li></ul></article>
       <article class="card"><h3>☕ الميداليات</h3><ul>
         <li>ارتفاع الطبقة 0.12–0.16 مم للنصوص الصغيرة.</li>
         <li>تعبئة 20–30٪، وجدران 3 خطوط لقوة الحلقة.</li>

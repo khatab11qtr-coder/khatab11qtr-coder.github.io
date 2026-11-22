@@ -1,12 +1,141 @@
 [
-  { "img": "cup.png", "title": "كوب تيك أواي", "desc": "الاسم بارز على الكم مع غطاء وحلقة — الأكثر طلباً للكوفيهات.", "preset": { "template": "cup", "text1": "Bean House", "text2": "SPECIALTY COFFEE", "size": 55, "c1": "#3b2a20", "c2": "#f5e6c8" } },
-  { "img": "iced.png", "title": "كوب آيس بشفاطة", "desc": "الحلقة في رأس الشفاطة، وموجة ومكعبات ثلج بارزة.", "preset": { "template": "iced", "text1": "Cold Brew", "text2": "ICED COFFEE", "size": 58, "c1": "#1f3b57", "c2": "#e6f2ff" } },
-  { "img": "dallah.png", "title": "دلة عربية", "desc": "للقهوة العربية والمجالس — بالعربي أو الإنجليزي.", "preset": { "template": "dallah", "text1": "قهوتنا", "text2": "ARABIC COFFEE", "size": 60, "font": "Reem Kufi", "c1": "#1e4d3a", "c2": "#e8c76a" } },
-  { "img": "finjan.png", "title": "فنجان عربي", "desc": "فنجان مع صحن ونقشة زخرفية.", "preset": { "template": "finjan", "text1": "قهوة عربية", "text2": "", "size": 50, "font": "Lalezar", "c1": "#f2efe8", "c2": "#a3741d" } },
-  { "img": "espresso.png", "title": "مكينة إسبريسو", "desc": "الاسم على لوحة المكينة وفنجان تحت البورتافلتر.", "preset": { "template": "espresso", "text1": "ESPRESSO", "text2": "BAR", "size": 55, "c1": "#2b2b2b", "c2": "#d9d9d9" } },
-  { "img": "v60.png", "title": "V60 تقطير", "desc": "قمع التقطير، والمقبض هو مكان الحلقة.", "preset": { "template": "v60", "text1": "V60", "text2": "POUR OVER", "size": 45, "c1": "#f3f1ec", "c2": "#c0392b" } },
-  { "img": "bean.png", "title": "حبة قهوة", "desc": "حبة بشق S بارز — مناسبة للمحامص.", "preset": { "template": "bean", "text1": "Mocha", "text2": "ROASTERY", "size": 55, "c1": "#5a3a22", "c2": "#f0d9b5" } },
-  { "img": "coaster.png", "title": "مسند أكواب", "desc": "قطر 9 سم مع حبات قهوة حول الحافة.", "preset": { "template": "coaster", "text1": "Bean House", "text2": "SINCE 2024", "size": 90, "c1": "#3b2a20", "c2": "#f5e6c8" } },
-  { "img": "stand.png", "title": "ستاند منيو QR", "desc": "لوحة للطاولة + قاعدة تركيب — امسح وشوف المنيو.", "preset": { "template": "stand", "text1": "امسح للمنيو", "text2": "SCAN FOR MENU", "qr": "https://example.com/menu", "size": 70, "c1": "#111111", "c2": "#ffffff" } },
-  { "img": "heart.png", "title": "قلب", "desc": "هدية أو توزيعات مناسبات.", "preset": { "template": "heart", "text1": "Love Coffee", "text2": "", "size": 50, "c1": "#b0303b", "c2": "#ffe3e6" } }
+ {
+  "img": "cup3d.png",
+  "title": "كوب 3D مجسّم",
+  "desc": "غطاء وكوب وكم وحلقة — كل قطعة بلونها، وحبوب أو اسمك أو شعارك على الكم.",
+  "go": "cup3d"
+ },
+ {
+  "img": "cup.png",
+  "title": "كوب تيك أواي",
+  "desc": "الاسم بارز على الكم مع غطاء وحلقة — الأكثر طلباً للكوفيهات.",
+  "preset": {
+   "template": "cup",
+   "text1": "Bean House",
+   "text2": "SPECIALTY COFFEE",
+   "size": 55,
+   "c1": "#3b2a20",
+   "c2": "#f5e6c8"
+  }
+ },
+ {
+  "img": "iced.png",
+  "title": "كوب آيس بشفاطة",
+  "desc": "الحلقة في رأس الشفاطة، وموجة ومكعبات ثلج بارزة.",
+  "preset": {
+   "template": "iced",
+   "text1": "Cold Brew",
+   "text2": "ICED COFFEE",
+   "size": 58,
+   "c1": "#1f3b57",
+   "c2": "#e6f2ff"
+  }
+ },
+ {
+  "img": "dallah.png",
+  "title": "دلة عربية",
+  "desc": "للقهوة العربية والمجالس — بالعربي أو الإنجليزي.",
+  "preset": {
+   "template": "dallah",
+   "text1": "قهوتنا",
+   "text2": "ARABIC COFFEE",
+   "size": 60,
+   "font": "Reem Kufi",
+   "c1": "#1e4d3a",
+   "c2": "#e8c76a"
+  }
+ },
+ {
+  "img": "finjan.png",
+  "title": "فنجان عربي",
+  "desc": "فنجان مع صحن ونقشة زخرفية.",
+  "preset": {
+   "template": "finjan",
+   "text1": "قهوة عربية",
+   "text2": "",
+   "size": 50,
+   "font": "Lalezar",
+   "c1": "#f2efe8",
+   "c2": "#a3741d"
+  }
+ },
+ {
+  "img": "espresso.png",
+  "title": "مكينة إسبريسو",
+  "desc": "الاسم على لوحة المكينة وفنجان تحت البورتافلتر.",
+  "preset": {
+   "template": "espresso",
+   "text1": "ESPRESSO",
+   "text2": "BAR",
+   "size": 55,
+   "c1": "#2b2b2b",
+   "c2": "#d9d9d9"
+  }
+ },
+ {
+  "img": "v60.png",
+  "title": "V60 تقطير",
+  "desc": "قمع التقطير، والمقبض هو مكان الحلقة.",
+  "preset": {
+   "template": "v60",
+   "text1": "V60",
+   "text2": "POUR OVER",
+   "size": 45,
+   "c1": "#f3f1ec",
+   "c2": "#c0392b"
+  }
+ },
+ {
+  "img": "bean.png",
+  "title": "حبة قهوة",
+  "desc": "حبة بشق S بارز — مناسبة للمحامص.",
+  "preset": {
+   "template": "bean",
+   "text1": "Mocha",
+   "text2": "ROASTERY",
+   "size": 55,
+   "c1": "#5a3a22",
+   "c2": "#f0d9b5"
+  }
+ },
+ {
+  "img": "coaster.png",
+  "title": "مسند أكواب",
+  "desc": "قطر 9 سم مع حبات قهوة حول الحافة.",
+  "preset": {
+   "template": "coaster",
+   "text1": "Bean House",
+   "text2": "SINCE 2024",
+   "size": 90,
+   "c1": "#3b2a20",
+   "c2": "#f5e6c8"
+  }
+ },
+ {
+  "img": "stand.png",
+  "title": "ستاند منيو QR",
+  "desc": "لوحة للطاولة + قاعدة تركيب — امسح وشوف المنيو.",
+  "preset": {
+   "template": "stand",
+   "text1": "امسح للمنيو",
+   "text2": "SCAN FOR MENU",
+   "qr": "https://example.com/menu",
+   "size": 70,
+   "c1": "#111111",
+   "c2": "#ffffff"
+  }
+ },
+ {
+  "img": "heart.png",
+  "title": "قلب",
+  "desc": "هدية أو توزيعات مناسبات.",
+  "preset": {
+   "template": "heart",
+   "text1": "Love Coffee",
+   "text2": "",
+   "size": 50,
+   "c1": "#b0303b",
+   "c2": "#ffe3e6"
+  }
+ }
 ]

@@ -239,3 +239,13 @@ details.more .actions { margin-top: 8px; }
 .tiers tr.on td { background: color-mix(in srgb, var(--accent) 20%, transparent); font-weight: 800; }
 @media (max-width: 900px) { .order { grid-template-columns: 1fr; } .price { grid-template-columns: 1fr 1fr; } .price .total { grid-column: span 2; } }
 .sw { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); vertical-align: middle; }
+.colors5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.colors5 label { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: .75rem; font-weight: 700; color: var(--muted); cursor: pointer; }
+.colors5 input[type=color] { height: 42px; padding: 2px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.presets button { display: flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--bg-2); cursor: pointer; gap: 0; }
+.presets button i { width: 14px; height: 14px; border-radius: 50%; display: block; margin-inline-start: -3px; border: 1px solid rgba(0,0,0,.2); }
+.presets button i:first-child { margin: 0; }
+.presets button:hover { border-color: var(--accent); }
+.c-text, .c-text2, .c-logo, .c-back { display: none; }
+body.cc-text .c-text, body.cc-text .c-text2, body.cc-beans_text .c-text, body.cc-logo .c-logo, body.cb-text .c-back { display: block; }
