@@ -322,3 +322,10 @@ body.mod-takeaway .m-sleeve { display: flex; }
 .mine-list { display: grid; gap: 8px; margin: 12px 0; max-height: 50vh; overflow: auto; }
 .mrow { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid #8883; border-radius: 10px; }
 .mrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 10px 0; }
+.price-grid label { display: flex; flex-direction: column; gap: 3px; font-size: .85rem; }
+.price-grid small { opacity: .65; font-size: .72rem; }
+.tier-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 8px; margin: 8px 0 14px; }
+.tier-grid label { display: flex; flex-direction: column; gap: 2px; font-size: .78rem; }
+.price-ex h4, .modal h4 { margin: 12px 0 6px; }

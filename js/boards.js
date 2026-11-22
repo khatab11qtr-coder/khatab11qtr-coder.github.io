@@ -9,9 +9,13 @@ import { plate, cut, mapT } from './plate.js';
 export const PORT_TYPES = {
   usbc: ['USB-C', 10, 4.5, -0.3], micro: ['Micro-USB', 8.5, 4, -0.3], mini: ['Mini-USB', 9.5, 4.5, -0.3], usba: ['USB-A', 15, 16.5, -0.5], usbb: ['USB-B', 12.5, 11, -0.5],
   hdmi: ['HDMI', 16, 7, -0.3], mhdmi: ['Micro-HDMI', 8.5, 4.5, -0.3], eth: ['Ethernet', 16.5, 14, -0.5], dc: ['DC jack', 9.5, 11, -0.5],
-  audio: ['3.5mm', 7.5, 7.5, -0.5], sd: ['SD', 13, 3, -1.8], led: ['LED / زر', 6, 6, 0], custom: ['مخصص', 10, 6, 0],
+  audio: ['3.5mm', 7.5, 7.5, -0.5], sd: ['SD', 13, 3, -1.8], led: ['LED / زر مربع', 6, 6, 0], custom: ['مخصص', 10, 6, 0],
+  // [الاسم، العرض/القطر، الارتفاع، الإزاحة، دائري؟، افتراضياً على الغطاء؟]
+  led3: ['LED دائري 3 مم', 3.4, 3.4, 2, 1, 1], led5: ['LED دائري 5 مم', 5.4, 5.4, 2, 1, 1], btn6: ['زر دائري 6 مم', 6.4, 6.4, 2, 1, 1], btn12: ['زر دائري 12 مم', 12.3, 12.3, 2, 1, 1],
+  pot: ['مقبض بوتنشيومتر 7 مم', 7.4, 7.4, 2, 1, 1], switch12: ['مفتاح تشغيل 12 مم', 12.2, 12.2, 2, 1, 0], cable: ['مخرج سلك 6 مم', 6.2, 6.2, 0, 1, 0], dcr: ['مقبس DC دائري 8 مم', 8.2, 8.2, 2, 1, 0],
+  oled: ['نافذة شاشة OLED 0.96"', 26, 14.5, 0, 0, 1], lcd: ['نافذة شاشة LCD 16×2', 65, 16.5, 0, 0, 1],
 };
-const P = (type, wall, pos, o = {}) => ({ type, wall, pos, w: PORT_TYPES[type][1], h: PORT_TYPES[type][2], z: PORT_TYPES[type][3], ...o });
+const P = (type, wall, pos, o = {}) => ({ type, wall, pos, w: PORT_TYPES[type][1], h: PORT_TYPES[type][2], z: PORT_TYPES[type][3], round: !!PORT_TYPES[type][4], ...o });
 export const BOARDS = {
   uno: { n: 'Arduino Uno R3', w: 68.6, d: 53.3, mount: 'holes', holes: [[14, 2.5], [15.3, 50.7], [66.1, 7.6], [66.1, 35.5]], hole: 3.2, head: 14, sh: 5, ports: [P('usbb', 'left', 38.1), P('dc', 'left', 7.6)] },
   mega: { n: 'Arduino Mega 2560', w: 101.6, d: 53.3, mount: 'holes', holes: [[14, 2.5], [15.3, 50.8], [66.1, 7.6], [66.1, 35.6], [90.2, 50.8], [96.5, 2.5]], hole: 3.2, head: 14, sh: 5, ports: [P('usbb', 'left', 38.1), P('dc', 'left', 7.6)] },
@@ -22,7 +26,7 @@ export const BOARDS = {
   pico: { n: 'Raspberry Pi Pico', w: 51, d: 21, mount: 'ends', holes: [], hole: 2.1, head: 9, sh: 4, ports: [P('micro', 'left', 10.5)] },
   custom: { n: 'لوحة مخصصة', w: 60, d: 40, mount: 'holes', holes: [[3.5, 3.5], [56.5, 3.5], [3.5, 36.5], [56.5, 36.5]], hole: 3, head: 12, sh: 5, ports: [] },
 };
-export const newPort = (type = 'usbc') => P(type, 'left', 10);
+export const newPort = (type = 'usbc') => { const t = PORT_TYPES[type]; return P(type, t[5] ? 'lid' : 'left', 10, t[5] ? { z: 10 } : {}); };
 
 const shift = (t, dx, dy, dz = 0) => { for (let k = 0; k < t.length; k += 3) { t[k] += dx; t[k + 1] += dy; t[k + 2] += dz; } return t; };
 
@@ -39,25 +43,26 @@ export function buildBoard(B) {
     if (B.ears) { x.globalCompositeOperation = 'destination-out'; for (const ex of [ear / 2, FL - ear / 2]) { x.beginPath(); x.arc(ex, od / 2, 2.4, 0, Math.PI * 2); x.fill(); } x.globalCompositeOperation = 'source-over'; }
   }), (u, v, t) => [u - FL / 2, v - od / 2, t]));
   // المنافذ والتهوية
-  const holes = { front: [], back: [], left: [], right: [] };
+  const holes = { front: [], back: [], left: [], right: [] }, circ = { front: [], back: [], left: [], right: [] }, lidRects = [], lidCircs = [];
   for (const p of B.ports) {
+    if (p.wall === 'lid') { const u = T + cx + p.pos, v = T + cy + p.z; if (B.lid) (p.round ? lidCircs.push([u, v, p.w / 2]) : lidRects.push([u, v, p.w, p.h])); continue; }
     if (!holes[p.wall]) continue;
     const along = p.wall === 'back' ? ow - (T + cx + p.pos) : p.wall === 'front' ? T + cx + p.pos : T + cy + p.pos; // pos يُقاس من حافة اللوحة اليسرى (أمامي/خلفي) أو الأمامية (يمين/يسار)
     const zc = Math.min(H - 1.5, Math.max(T + 1.2, zPcb + p.z + p.h / 2));
-    holes[p.wall].push([along, zc, p.w, Math.min(p.h, H - 1 - (zc - p.h / 2))]);
+    if (p.round) circ[p.wall].push([along, zc, p.w / 2]); else holes[p.wall].push([along, zc, p.w, Math.min(p.h, H - 1 - (zc - p.h / 2))]);
   }
   if (B.vents === 'sides' || B.vents === 'both') {
     const n = Math.max(1, Math.min(14, Math.floor((id - 8) / 5))), zc = T + ih * 0.55;
     for (const w of ['left', 'right']) for (let i = 0; i < n; i++) holes[w].push([T + ((i + 0.5) * id) / n, zc, 2.2, ih * 0.45]);
   }
   if (snap) for (const w of ['front', 'back']) holes[w].push([ow / 2, H - 2.15, 10, 2.5]);
-  const wallPlate = (L, list) => plate(L, H, T + ov, (x) => { x.fillRect(0, 0, L, H); cut(x, list); });
+  const wallPlate = (L, list, cl = []) => plate(L, H, T + ov, (x) => { x.fillRect(0, 0, L, H); cut(x, list, cl); });
   const long = ow, short = id; // الأمامي/الخلفي بطول ow الكامل، واليمين/اليسار بين الاثنين
-  body.push(mapT(wallPlate(long, holes.front), (u, v, t) => [u - ow / 2, -id / 2 - T + t, v]));
-  body.push(mapT(wallPlate(long, holes.back), (u, v, t) => [ow / 2 - u, id / 2 - ov + t, v]));
-  const side = (list, left) => wallPlate(short + 2 * ov, list.map(([u, z, w, h]) => [u - T + ov, z, w, h]));
-  body.push(mapT(side(holes.left), (u, v, t) => [-iw / 2 - T + t, u - id / 2 - ov, v]));
-  body.push(mapT(side(holes.right), (u, v, t) => [iw / 2 - ov + t, u - id / 2 - ov, v]));
+  body.push(mapT(wallPlate(long, holes.front, circ.front), (u, v, t) => [u - ow / 2, -id / 2 - T + t, v]));
+  body.push(mapT(wallPlate(long, holes.back, circ.back), (u, v, t) => [ow / 2 - u, id / 2 - ov + t, v]));
+  const side = (list, cl) => wallPlate(short + 2 * ov, list.map(([u, z, w, h]) => [u - T + ov, z, w, h]), cl.map(([u, z, r]) => [u - T + ov, z, r]));
+  body.push(mapT(side(holes.left, circ.left), (u, v, t) => [-iw / 2 - T + t, u - id / 2 - ov, v]));
+  body.push(mapT(side(holes.right, circ.right), (u, v, t) => [iw / 2 - ov + t, u - id / 2 - ov, v]));
   // قواعد التثبيت
   const bx0 = -B.w / 2, by0 = -B.d / 2;
   if (B.mount === 'holes') {
@@ -102,7 +107,7 @@ export function buildBoard(B) {
       for (let i = 0; i < n; i++) vents.push([ow / 2 - ((n - 1) * 5) / 2 + i * 5, od / 2, 2.2, Math.max(8, id * 0.55)]);
     }
     const sholes = screws ? [-1, 1].flatMap((sx) => [-1, 1].map((sy) => [ow / 2 + sx * (iw / 2 - OD / 2), od / 2 + sy * (id / 2 - OD / 2), (scr + 0.5) / 2])) : [];
-    const top = plate(ow, od, plateT, (x) => { x.fillRect(0, 0, ow, od); cut(x, vents, sholes); });
+    const top = plate(ow, od, plateT, (x) => { x.fillRect(0, 0, ow, od); cut(x, [...vents, ...lidRects], [...sholes, ...lidCircs]); });
     const lidParts = [mapT(lip, (u, v, t) => [u - lw / 2 + ox, v - ld / 2, t]), mapT(top, (u, v, t) => [u - ow / 2 + ox, v - od / 2, lipH + t])];
     if (snap) { // خطاطيف على الوجه الأمامي والخلفي للحافة: قمة مسطحة وانحدار سفلي
       const hw = 8, hook = () => plate(1.6, 2.2, hw, (x) => { x.beginPath(); x.moveTo(-0.4, 0); x.lineTo(0, 0); x.lineTo(1.2, 2); x.lineTo(-0.4, 2); x.closePath(); x.fill(); }, 0.05);

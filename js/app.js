@@ -45,11 +45,9 @@ const fmt = (n, d = 1) => Number(n).toLocaleString('ar', { maximumFractionDigits
 
 function costStats(tris, extra = []) {
   const vol = volumeOf(tris) / 1000;                 // سم³
-  const grams = vol * CONFIG.density * 0.8;          // تقدير مع تعبئة جزئية
+  const grams = vol * CONFIG.density * (CONFIG.infill ?? 0.8);   // تقدير مع تعبئة جزئية
   const box = bboxOf(tris).size;
-  const minutes = 6 + grams * 4.2;
-  const cost = grams / 1000 * CONFIG.filamentPricePerKg;
-  const price = Math.max(CONFIG.minPrice, Math.ceil(cost * CONFIG.profitMultiplier + minutes / 60 * 4));
+  const { minutes, cost, price } = priceOf(grams);
   const rows = [
     ['المقاس (مم)', `${fmt(box[0])} × ${fmt(box[1])} × ${fmt(box[2])}`],
     ['الوزن التقريبي', `${fmt(grams)} غ`],
@@ -60,6 +58,65 @@ function costStats(tris, extra = []) {
     ...extra,
   ];
   return { html: rows.map(([k, v]) => `<div class="stat"><small>${k}</small><b>${v}</b></div>`).join(''), grams, price, box };
+}
+
+
+/* ================= حاسبة السعر: كل أرقام التسعير قابلة للتعديل ================= */
+const PRICE_FIELDS = [
+  ['filamentPricePerKg', 'سعر كيلو الفلامنت', 1, 'كم تدفع لكيلو الخامة'],
+  ['profitMultiplier', 'معامل الربح على الخامة (×)', 0.1, 'مثلاً 3 = تبيع الخامة بثلاثة أضعاف تكلفتها'],
+  ['hourlyRate', 'أجرة ساعة الطباعة', 0.5, 'كهرباء + استهلاك الطابعة + وقتك'],
+  ['minPrice', 'أقل سعر للقطعة', 1, 'ما ينزل السعر عن هذا مهما صغرت القطعة'],
+  ['roundTo', 'تقريب السعر لأعلى لأقرب', 1, '1 أو 5 أو 10'],
+  ['density', 'كثافة الخامة (غ/سم³)', 0.01, 'PLA ≈ 1.24 — PETG ≈ 1.27 — ABS ≈ 1.04'],
+  ['infill', 'نسبة الخامة المستخدمة', 0.05, '0.8 = تعبئة جزئية (تقدير)'],
+  ['printBaseMin', 'دقائق ثابتة لكل قطعة', 1, 'تجهيز وأول طبقات'],
+  ['printMinPerGram', 'دقائق الطباعة لكل جرام', 0.1, 'تتحدد من سرعة طابعتك'],
+];
+const PRICE_DEFAULT = Object.fromEntries([...PRICE_FIELDS.map(([k]) => [k, CONFIG[k]]), ['currency', CONFIG.currency], ['tiers', CONFIG.tiers.map((t) => ({ ...t }))]]);
+function applyPricing(o) {
+  if (!o || typeof o !== 'object') return;
+  for (const [k] of PRICE_FIELDS) { const v = Number(o[k]); if (Number.isFinite(v) && v >= 0) CONFIG[k] = v; }
+  if (typeof o.currency === 'string' && o.currency.trim()) CONFIG.currency = o.currency.trim().slice(0, 8);
+  if (Array.isArray(o.tiers)) { const t = o.tiers.map((x) => ({ min: Math.max(1, Math.round(+x.min)), off: Math.min(90, Math.max(0, +x.off)) })).filter((x) => Number.isFinite(x.min) && Number.isFinite(x.off)).sort((a, b) => a.min - b.min); if (t.length) CONFIG.tiers = t; }
+}
+function refreshPrices() { for (const o of [K, C3, SH, BD]) if (o?.view) o.update?.(); if (typeof O !== 'undefined' && $('#order').classList.contains('active')) O.calc(); }
+applyPricing(store.get('pricing', null));
+fetch('gallery/pricing.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) { applyPricing(j); applyPricing(store.get('pricing', null)); refreshPrices(); } }).catch(() => {});
+const priceOf = (grams) => {
+  const minutes = CONFIG.printBaseMin + grams * CONFIG.printMinPerGram, cost = grams / 1000 * CONFIG.filamentPricePerKg;
+  const raw = cost * CONFIG.profitMultiplier + minutes / 60 * CONFIG.hourlyRate, step = Math.max(1, CONFIG.roundTo || 1);
+  return { minutes, cost, price: Math.max(CONFIG.minPrice, Math.ceil(raw / step - 1e-9) * step) };
+};
+function openPricing() {
+  const cur = { ...Object.fromEntries(PRICE_FIELDS.map(([k]) => [k, CONFIG[k]])), currency: CONFIG.currency, tiers: CONFIG.tiers.map((t) => ({ ...t })) };
+  const m = modal(`<h3>⚙️ إعدادات الأسعار</h3>
+    <p class="hint">كل أسعار الموقع (سعر البيع المقترح وصفحة الطلب) تنحسب من هذي الأرقام. تنحفظ في متصفحك — ولتطبيقها لكل الزوار صدّر الملف وارفعه باسم gallery/pricing.json.</p>
+    <div class="price-grid">${PRICE_FIELDS.map(([k, n, st, h]) => `<label>${n}<input type="number" data-k="${k}" value="${cur[k]}" step="${st}" min="0"><small>${h}</small></label>`).join('')}
+      <label>العملة<input data-k="currency" value="${escapeHTML(cur.currency)}" maxlength="8"></label></div>
+    <h4>خصومات الكمية</h4>
+    <div class="tier-grid">${[...cur.tiers, ...Array(Math.max(0, 6 - cur.tiers.length)).fill({ min: '', off: '' })].slice(0, 6).map((t, i) => `<label>من كمية<input type="number" data-t="${i}" data-f="min" value="${t.min}" min="1"></label><label>خصم ٪<input type="number" data-t="${i}" data-f="off" value="${t.off}" min="0" max="90"></label>`).join('')}</div>
+    <div class="price-ex"></div>
+    <div class="actions"><button class="btn primary" data-a="save">💾 احفظ</button><button class="btn small" data-a="reset">↺ الافتراضي</button><button class="btn small" data-a="export">⬇ تصدير pricing.json</button></div>`, { wide: true });
+  const read = () => {
+    const o = { tiers: [] };
+    m.querySelectorAll('[data-k]').forEach((e) => (o[e.dataset.k] = e.dataset.k === 'currency' ? e.value : parseFloat(e.value)));
+    const rows = {}; m.querySelectorAll('[data-t]').forEach((e) => ((rows[e.dataset.t] ||= {})[e.dataset.f] = e.value));
+    Object.values(rows).forEach((r) => { if (r.min !== '' && r.off !== '') o.tiers.push({ min: +r.min, off: +r.off }); });
+    return o;
+  };
+  const example = () => {
+    const save = { ...Object.fromEntries(PRICE_FIELDS.map(([k]) => [k, CONFIG[k]])), currency: CONFIG.currency };
+    applyPricing(read()); const rows = [20, 50, 120].map((g) => { const r = priceOf(g); return `<div class="stat"><small>قطعة ${g} غ (~${fmt(r.minutes / 60)} س)</small><b>${fmt(r.price, 0)} ${CONFIG.currency}</b><small>تكلفة خامة ${fmt(r.cost, 2)}</small></div>`; }).join('');
+    applyPricing(save); m.querySelector('.price-ex').innerHTML = `<h4>مثال حي</h4><div class="stats">${rows}</div>`;
+  };
+  example(); m.addEventListener('input', example);
+  m.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
+    if (a === 'save') { const o = read(); applyPricing(o); store.set('pricing', o); refreshPrices(); toast('انحفظت الأسعار ✓'); m.close(); }
+    if (a === 'reset') { try { localStorage.removeItem('pricing'); } catch {} applyPricing(PRICE_DEFAULT); refreshPrices(); toast('رجعت الأسعار الافتراضية'); m.close(); }
+    if (a === 'export') { download(new Blob([JSON.stringify(read(), null, 1)], { type: 'application/json' }), 'pricing.json'); toast('تم تصدير الأسعار ✓'); }
+  });
 }
 
 /* ================= الهوية والوضع ================= */
@@ -849,15 +906,15 @@ const BD = {
   },
   sync() { $$('.bd-holes').forEach((e) => (e.hidden = $('#bdMount').value !== 'holes')); $$('.bd-fasten').forEach((e) => (e.hidden = !$('#bdLid').checked)); $$('.bd-screw').forEach((e) => (e.hidden = $('#bdFasten').value !== 'screws')); },
   renderPorts() {
-    const W = [['left', 'يسار'], ['right', 'يمين'], ['front', 'أمامي'], ['back', 'خلفي']];
+    const W = [['left', 'يسار'], ['right', 'يمين'], ['front', 'أمامي'], ['back', 'خلفي'], ['lid', 'فوق (الغطاء)']];
     $('#bdPorts').innerHTML = this.ports.map((p, i) => `<div class="port" data-i="${i}">
       <div class="p-head"><select data-f="type">${Object.entries(PORT_TYPES).map(([k, v]) => `<option value="${k}"${k === p.type ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>
       <select data-f="wall">${W.map(([k, n]) => `<option value="${k}"${k === p.wall ? ' selected' : ''}>${n}</option>`).join('')}</select>
       <button type="button" data-rm aria-label="حذف">✕</button></div>
-      <label>الموضع<input type="number" data-f="pos" value="${p.pos}" step="0.1"></label>
-      <label>العرض<input type="number" data-f="w" value="${p.w}" step="0.5" min="1"></label>
-      <label>الارتفاع<input type="number" data-f="h" value="${p.h}" step="0.5" min="1"></label>
-      <label>الإزاحة<input type="number" data-f="z" value="${p.z}" step="0.1"></label></div>`).join('') || '<p class="hint">ما فيه فتحات — أضف منفذاً من القائمة تحت.</p>';
+      <label>${p.wall === 'lid' ? 'س' : 'الموضع'}<input type="number" data-f="pos" value="${p.pos}" step="0.1"></label>
+      <label>${p.round ? 'القطر' : 'العرض'}<input type="number" data-f="w" value="${p.w}" step="0.1" min="1"></label>
+      <label>الارتفاع<input type="number" data-f="h" value="${p.h}" step="0.5" min="1"${p.round ? ' disabled' : ''}></label>
+      <label>${p.wall === 'lid' ? 'ص' : 'الإزاحة'}<input type="number" data-f="z" value="${p.z}" step="0.1"></label></div>`).join('') || '<p class="hint">ما فيه فتحات — أضف منفذاً من القائمة تحت.</p>';
   },
   async update() {
     if (!this.view) return;
@@ -881,7 +938,7 @@ const BD = {
       this.stats = costStats(mergeTris(this.printable().map((p) => p.tris)));
       $('#bdStats').innerHTML = this.stats.html;
       const w = [];
-      B.ports.forEach((p) => { const L = p.wall === 'front' || p.wall === 'back' ? B.w : B.d; if (p.pos - p.w / 2 < -0.5 || p.pos + p.w / 2 > L + 0.5) w.push(`فتحة ${PORT_TYPES[p.type]?.[0] || ''} خارج حدود اللوحة — راجع «الموضع».`); });
+      B.ports.forEach((p) => { if (p.wall === 'lid') { if (!B.lid) w.push('فتحة بالغطاء لكن الغطاء مطفي — فعّل «غطاء».'); else if (p.pos - p.w / 2 < -0.5 || p.pos + p.w / 2 > B.w + 0.5 || p.z - p.h / 2 < -0.5 || p.z + p.h / 2 > B.d + 0.5) w.push(`فتحة ${PORT_TYPES[p.type]?.[0] || ''} خارج حدود اللوحة — راجع «الموضع».`); return; } const L = p.wall === 'front' || p.wall === 'back' ? B.w : B.d; if (p.pos - p.w / 2 < -0.5 || p.pos + p.w / 2 > L + 0.5) w.push(`فتحة ${PORT_TYPES[p.type]?.[0] || ''} خارج حدود اللوحة — راجع «الموضع».`); });
       if (B.mount === 'holes' && !B.holes.length) w.push('ما فيه ثقوب تثبيت — أضف مواقع الثقوب أو غيّر طريقة التثبيت.');
       if (B.lid && this.stats.box[0] > 256) w.push('العلبة مع الغطاء أعرض من أغلب البلاطات (256 مم) — اطبعهم كل واحد لوحده.');
       if (B.label && B.labelOn === 'lid' && ['lid', 'both'].includes(B.vents)) w.push('النص على الغطاء قد يتداخل مع فتحات التهوية — انقله للواجهة الأمامية.');
@@ -915,12 +972,14 @@ $$('#boards .panel input, #boards .panel select, #boards .panel textarea').forEa
   el.addEventListener('input', () => { if (['bdMount', 'bdLid', 'bdFasten'].includes(el.id)) BD.sync(); bdUpd(); });
 });
 $('#bdColors').addEventListener('input', () => BD.recolor());
-$('#bdAddBtn').onclick = () => { BD.ports.push(newPort($('#bdAdd').value)); BD.renderPorts(); BD.update(); };
+$('#bdAddBtn').onclick = () => { const p = newPort($('#bdAdd').value); if (p.wall === 'lid') { p.pos = +(BD.num('bdW', 15, 200, 60) / 2).toFixed(1); p.z = +(BD.num('bdD', 10, 150, 40) / 2).toFixed(1); } BD.ports.push(p); BD.renderPorts(); BD.update(); };
 $('#bdPorts').addEventListener('click', (e) => { const rm = e.target.closest('[data-rm]'); if (!rm) return; BD.ports.splice(+rm.closest('.port').dataset.i, 1); BD.renderPorts(); BD.update(); });
 $('#bdPorts').addEventListener('change', (e) => {
   const row = e.target.closest('.port'); if (!row) return; const p = BD.ports[+row.dataset.i], f = e.target.dataset.f;
   if (f === 'type' || f === 'wall') p[f] = e.target.value; else p[f] = parseFloat(e.target.value) || 0;
-  if (f === 'type') { const t = PORT_TYPES[p.type]; p.w = t[1]; p.h = t[2]; p.z = t[3]; BD.renderPorts(); }
+  if (f === 'type') { const t = PORT_TYPES[p.type]; p.w = t[1]; p.h = t[2]; p.z = t[3]; p.round = !!t[4]; if (t[5]) { p.wall = 'lid'; p.pos = +(BD.num('bdW', 15, 200, 60) / 2).toFixed(1); p.z = +(BD.num('bdD', 10, 150, 40) / 2).toFixed(1); } else if (p.wall === 'lid') { p.wall = 'left'; } BD.renderPorts(); }
+  if (f === 'wall') BD.renderPorts();
+  if (f === 'w' && p.round) { p.h = p.w; BD.renderPorts(); }
   BD.update();
 });
 $('#bdRot').onclick = (e) => { BD.view.autoRotate = !BD.view.autoRotate; e.currentTarget.classList.toggle('on', BD.view.autoRotate); };
@@ -1116,6 +1175,7 @@ const O = {
 };
 ['oName', 'oPhone'].forEach((id) => { $('#' + id).value = store.get(id, ''); $('#' + id).addEventListener('change', (e) => store.set(id, e.target.value)); });
 $('#oQty').addEventListener('input', () => O.calc());
+$('#pricingBtn').onclick = (e) => { e.preventDefault(); openPricing(); };
 $('#oUsePhoto').onclick = () => { O.source = 'photo'; O.render(); };
 $('#oCopy').onclick = async () => { try { await navigator.clipboard.writeText(O.text()); toast('تم النسخ ✓'); } catch { toast('تعذر النسخ'); } };
 $('#oFiles').onclick = async () => { const I = O.info(); if (!I) return; for (const [n, b] of await I.files()) download(b, n); };
