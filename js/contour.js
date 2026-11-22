@@ -105,17 +105,37 @@ function inside(pt, poly) {
   return c;
 }
 
+/** حذف النقاط المكررة والواقعة على خط مستقيم (earcut يحذفها داخلياً فتسبب فجوات مع الجدران) */
+function dropCollinear(p) {
+  let changed = true;
+  while (changed && p.length > 3) {
+    changed = false;
+    const out = [];
+    for (let k = 0, n = p.length; k < n; k++) {
+      const a = out.length ? out[out.length - 1] : p[(k - 1 + n) % n], b = p[k], c = p[(k + 1) % n];
+      const cr = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+      if (Math.abs(cr) < 1e-9 || (b[0] === a[0] && b[1] === a[1])) { changed = true; continue; }
+      out.push(b);
+    }
+    p = out;
+  }
+  return p;
+}
+
 /** يجمع الحلقات إلى مضلعات (خارجي + ثقوب) بالإحداثيات العالمية (مم، Y للأعلى) */
 export function polygonsFromField(f, w, h, px, { iso = 0.5, tol = 0.35, minArea = 0.6 } = {}) {
   const raw = traceLoops(f, w, h, iso);
   const loops = [];
   for (const l of raw) {
-    const s = simplify(l, tol).map(([x, y]) => [(x + 0.5) * px, (h - (y + 0.5)) * px]);
+    const tf = ([x, y]) => [(x + 0.5) * px, (h - (y + 0.5)) * px];
+    const s = dropCollinear(simplify(l, tol).map(tf));
+    if (s.length < 3) continue;
+    const rawP = dropCollinear(l.map(tf));
     const a = area(s);
     if (Math.abs(a) < minArea * px * px) continue;
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     for (const [x, y] of s) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-    loops.push({ p: s, abs: Math.abs(a), bb: [x0, y0, x1, y1], parent: -1, depth: 0, holes: [] });
+    loops.push({ p: s, raw: rawP.length >= 3 ? rawP : s, abs: Math.abs(a), bb: [x0, y0, x1, y1], parent: -1, depth: 0, holes: [], rawHoles: [] });
   }
   loops.sort((a, b) => b.abs - a.abs);
   for (let k = 0; k < loops.length; k++) {
@@ -131,30 +151,68 @@ export function polygonsFromField(f, w, h, px, { iso = 0.5, tol = 0.35, minArea 
   }
   const polys = [];
   loops.forEach((L) => {
-    if (L.depth % 2 === 0) { if (area(L.p) < 0) L.p.reverse(); polys.push(L); }
+    if (L.depth % 2 === 0) { if (area(L.p) < 0) L.p.reverse(); if (area(L.raw) < 0) L.raw.reverse(); polys.push(L); }
   });
   loops.forEach((L) => {
-    if (L.depth % 2 === 1) { if (area(L.p) > 0) L.p.reverse(); loops[L.parent].holes.push(L.p); }
+    if (L.depth % 2 === 1) {
+      if (area(L.p) > 0) L.p.reverse(); if (area(L.raw) > 0) L.raw.reverse();
+      loops[L.parent].holes.push(L.p); loops[L.parent].rawHoles.push(L.raw);
+    }
   });
-  return polys.map((P) => ({ outer: P.p, holes: P.holes }));
+  return polys.map((P) => ({ outer: P.p, holes: P.holes, rawOuter: P.raw, rawHoles: P.rawHoles }));
+}
+
+/** تثليث مع التحقق: كل ضلع حدودي يجب أن يظهر مرة واحدة وكل ضلع داخلي مرتين بعكس الاتجاه */
+function triangulate(ring) {
+  const flat = [], holeIdx = [], starts = [];
+  for (let r = 0; r < ring.length; r++) {
+    starts.push(flat.length / 2);
+    if (r > 0) holeIdx.push(flat.length / 2);
+    for (const [x, y] of ring[r]) flat.push(x, y);
+  }
+  const idx = earcut(flat, holeIdx.length ? holeIdx : null, 2);
+  const E = new Map(); const key = (a, b) => a * 1e7 + b;
+  for (let t = 0; t < idx.length; t += 3) {
+    let a = idx[t], b = idx[t + 1], c = idx[t + 2];
+    const cr = (flat[b * 2] - flat[a * 2]) * (flat[c * 2 + 1] - flat[a * 2 + 1]) - (flat[b * 2 + 1] - flat[a * 2 + 1]) * (flat[c * 2] - flat[a * 2]);
+    if (cr < 0) { [b, c] = [c, b]; idx[t + 1] = b; idx[t + 2] = c; }
+    for (const [u, v] of [[a, b], [b, c], [c, a]]) E.set(key(u, v), (E.get(key(u, v)) || 0) + 1);
+  }
+  let ok = true;
+  const ringEdge = new Set();
+  for (let r = 0; r < ring.length && ok; r++) {
+    const n = ring[r].length, s0 = starts[r];
+    for (let k = 0; k < n; k++) {
+      const u = s0 + k, v = s0 + (k + 1) % n;
+      ringEdge.add(key(u, v));
+      if (E.get(key(u, v)) !== 1 || E.has(key(v, u))) { ok = false; break; }
+    }
+  }
+  if (ok) for (const [k, n] of E) {
+    if (n !== 1) { ok = false; break; }
+    if (ringEdge.has(k)) continue;
+    const u = Math.floor(k / 1e7), v = k - u * 1e7;
+    if (E.get(key(v, u)) !== 1) { ok = false; break; }
+  }
+  return { flat, idx, ok };
 }
 
 /** بثق مضلعات بين z0 و z1 إلى مجسم مغلق */
 export function extrude(polys, z0, z1) {
   const out = [];
   const push = (...v) => { for (const x of v) out.push(x); };
-  for (const { outer, holes } of polys) {
-    const ring = [outer, ...holes];
-    const flat = [], holeIdx = [];
-    for (let r = 0; r < ring.length; r++) {
-      if (r > 0) holeIdx.push(flat.length / 2);
-      for (const [x, y] of ring[r]) flat.push(x, y);
+  for (const poly of polys) {
+    let ring = [poly.outer, ...poly.holes];
+    let T = triangulate(ring);
+    if (!T.ok && poly.rawOuter) {
+      // التبسيط سبّب تقاطعاً — نرجع للحدود الأصلية
+      const ring2 = [poly.rawOuter, ...poly.rawHoles];
+      const T2 = triangulate(ring2);
+      if (T2.ok || !T.ok) { ring = ring2; T = T2; }
     }
-    const idx = earcut(flat, holeIdx.length ? holeIdx : null, 2);
+    const { flat, idx } = T;
     for (let t = 0; t < idx.length; t += 3) {
-      let a = idx[t], b = idx[t + 1], c = idx[t + 2];
-      const cr = (flat[b * 2] - flat[a * 2]) * (flat[c * 2 + 1] - flat[a * 2 + 1]) - (flat[b * 2 + 1] - flat[a * 2 + 1]) * (flat[c * 2] - flat[a * 2]);
-      if (cr < 0) [b, c] = [c, b];
+      const a = idx[t], b = idx[t + 1], c = idx[t + 2];
       push(flat[a * 2], flat[a * 2 + 1], z1, flat[b * 2], flat[b * 2 + 1], z1, flat[c * 2], flat[c * 2 + 1], z1);
       push(flat[a * 2], flat[a * 2 + 1], z0, flat[c * 2], flat[c * 2 + 1], z0, flat[b * 2], flat[b * 2 + 1], z0);
     }

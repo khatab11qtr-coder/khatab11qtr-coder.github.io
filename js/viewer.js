@@ -29,10 +29,16 @@ export class Viewer {
     this.autoRotate = false;
     new ResizeObserver(() => this.resize()).observe(el);
     this.resize();
+    // نرسم فقط عند الحاجة وعندما يكون العارض ظاهراً — يوفر البطارية على الجوال
+    this.dirty = true;
+    this.controls.addEventListener('change', () => (this.dirty = true));
     const loop = () => {
       requestAnimationFrame(loop);
-      if (this.autoRotate) this.spin.rotation.z += 0.006;
+      if (!this.el.offsetParent || document.hidden) return;
+      if (this.autoRotate) { this.spin.rotation.z += 0.006; this.dirty = true; }
       this.controls.update();
+      if (!this.dirty) return;
+      this.dirty = false;
       this.renderer.render(this.scene, this.camera);
     };
     loop();
@@ -42,8 +48,10 @@ export class Viewer {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.dirty = true;
   }
   clear() {
+    this.dirty = true;
     for (const c of [...this.group.children]) {
       this.group.remove(c);
       c.geometry?.dispose(); c.material?.dispose();
@@ -74,6 +82,7 @@ export class Viewer {
       this.camera.position.set(r * 0.4, -r * 1.3, r * 1.3);
       this.controls.target.set(0, 0, size.z / 2);
     }
+    this.dirty = true;
     return size;
   }
   showObject(obj) {
@@ -92,7 +101,19 @@ export class Viewer {
     this.color = hex;
     const first = this.group.children[0];
     if (first?.material && this.group.children.length === 1) first.material.color.set(hex);
+    this.dirty = true;
   }
-  topView() { const r = this.camera.position.length(); this.camera.position.set(0, -0.001, r); this.controls.target.set(0, 0, 0); }
-  snapshot() { return this.renderer.domElement.toDataURL('image/png'); }
+  topView() { this.dirty = true; const r = this.camera.position.length(); this.camera.position.set(0, -0.001, r); this.controls.target.set(0, 0, 0); }
+  /** لقطة بحجم ثابت (تعمل حتى لو العارض مخفي) */
+  snapshot(w = 900, h = 700) {
+    const r = this.renderer, old = r.getSize(new THREE.Vector2()), pr = r.getPixelRatio(), asp = this.camera.aspect;
+    const gv = this.grid.visible; this.grid.visible = false;
+    r.setPixelRatio(1); r.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+    r.render(this.scene, this.camera);
+    const url = r.domElement.toDataURL('image/png');
+    this.grid.visible = gv;
+    r.setPixelRatio(pr); r.setSize(old.x, old.y, false); this.camera.aspect = asp; this.camera.updateProjectionMatrix();
+    this.dirty = true;
+    return url;
+  }
 }

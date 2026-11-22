@@ -202,3 +202,43 @@ export function keepLargest(mask, w, h, minFrac = 0.02) {
   for (let k = 0; k < w * h; k++) if (mask[k] && sizes[lab[k]] >= max * minFrac) out[k] = 1;
   return { mask: out, islands: sizes.filter((s) => s >= max * minFrac).length };
 }
+
+/**
+ * سطح ناعم بشكل محدد: يُضمَّن كل مربع شبكة رؤوسه الأربعة داخل القناع.
+ * قاع شبكي (يسمح بالثني لاحقاً) وجدران على الحواف — مجسم مغلق.
+ */
+export function maskedSlab(z, vmask, w, h, px) {
+  const inc = (i, j) => i >= 0 && j >= 0 && i < w - 1 && j < h - 1 &&
+    vmask[j * w + i] && vmask[j * w + i + 1] && vmask[(j + 1) * w + i] && vmask[(j + 1) * w + i + 1];
+  const out = [];
+  const X = (i) => i * px, Y = (j) => (h - 1 - j) * px, Z = (i, j) => z[j * w + i];
+  const P = (i, j, top) => [X(i), Y(j), top ? Z(i, j) : 0];
+  const tri = (a, b, c) => out.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+  const wall = (i0, j0, i1, j1) => {
+    const a0 = P(i0, j0, false), b0 = P(i1, j1, false), b1 = P(i1, j1, true), a1 = P(i0, j0, true);
+    tri(a0, b0, b1); tri(a0, b1, a1);
+  };
+  for (let j = 0; j < h - 1; j++) for (let i = 0; i < w - 1; i++) {
+    if (!inc(i, j)) continue;
+    const a = [i, j + 1], b = [i + 1, j + 1], c = [i + 1, j], d = [i, j];
+    tri(P(...a, true), P(...b, true), P(...c, true)); tri(P(...a, true), P(...c, true), P(...d, true));
+    tri(P(...a, false), P(...c, false), P(...b, false)); tri(P(...a, false), P(...d, false), P(...c, false));
+    if (!inc(i, j + 1)) wall(...a, ...b);
+    if (!inc(i + 1, j)) wall(...b, ...c);
+    if (!inc(i, j - 1)) wall(...c, ...d);
+    if (!inc(i - 1, j)) wall(...d, ...a);
+  }
+  return new Float32Array(out);
+}
+
+/** ثني مجسم مسطح حول أسطوانة (ليثوفين منحني): X يصير قوساً، Z سماكة للخارج، Y ارتفاعاً */
+export function bendCylinder(tris, widthMm, angleDeg) {
+  const ang = Math.max(10, Math.min(359, angleDeg)) * Math.PI / 180;
+  const R = widthMm / ang, mid = widthMm / 2;
+  const out = new Float32Array(tris.length);
+  for (let k = 0; k < tris.length; k += 3) {
+    const th = (tris[k] - mid) / R, r = R + tris[k + 2];
+    out[k] = Math.sin(th) * r; out[k + 1] = -Math.cos(th) * r; out[k + 2] = tris[k + 1];
+  }
+  return out;
+}
