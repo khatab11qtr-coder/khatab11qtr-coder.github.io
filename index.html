@@ -33,6 +33,7 @@
     <button data-go="home" class="active">الرئيسية</button>
     <button data-go="keychain">صمّم ميدالية</button>
     <button data-go="cup3d">🧊 مجسمات 3D</button>
+    <button data-go="shapes">📦 من أبعادك</button>
     <button data-go="occasions">🎉 مناسبات</button>
     <button data-go="photo">صورة ← مجسم</button>
     <button data-go="ai">مجسم كامل AI</button>
@@ -67,6 +68,7 @@
 
   <div class="features">
     <article class="card" data-go="cup3d"><div class="ficon">🥤</div><h3>كوب 3D كامل</h3><p>ميدالية كوب مجسّم بغطاء وكم وحلقة — اختر لون كل قطعة واكتب اسمك أو حط شعارك على الكم.</p></article>
+    <article class="card" data-go="shapes"><div class="ficon">📦</div><h3>مجسم من أبعادك</h3><p>اكتب الطول والعرض والارتفاع: صندوق، علبة بغطاء، أسطوانة، قلب… وانقش عليها صورتك أو اسمك.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">☕</div><h3>8 أشكال قهوة</h3><p>تيك أواي، آيس، مج، حبة قهوة، دلة، فنجان عربي، V60، ومكينة إسبريسو — بالاسم أو بشعار الكوفي.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">🔁</div><h3>ميدالية بوجهين</h3><p>الاسم من قدام، وحساب الانستقرام أو QR من ورا بلون ثاني مدموج في الطبقة الأولى.</p></article>
     <article class="card" data-go="keychain"><div class="ficon">🪧</div><h3>ستاند QR ومساند أكواب</h3><p>لوحة منيو للطاولة مع قاعدة تركيب، ومسند أكواب منقوش باسم الكوفي.</p></article>
@@ -263,6 +265,82 @@
         <button class="btn wa" id="cOrder">🛒 اطلبها طباعة</button>
       </div>
       <p class="hint">يُطبع واقفاً بدون دعامات (الحواف مشطوفة 45°). الألوان المتعددة تحتاج طابعة ملونة (AMS/MMU) — أو اطبعه بلون واحد ولوّنه.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== مجسم من أبعادك ===================== -->
+<section id="shapes" class="page">
+  <div class="workspace">
+    <aside class="panel">
+      <h2>📦 مجسم من أبعادك</h2>
+      <p class="hint">اكتب الطول والعرض والارتفاع بالمليمتر ونبني لك الشكل مضبوطاً — صندوق، علبة بغطاء، أسطوانة… وتنقش عليه صورتك أو اسمك.</p>
+      <label class="lbl">جاهز بضغطة</label>
+      <div class="chips" id="shPresets"></div>
+      <label class="lbl">الشكل</label>
+      <div class="tpl-grid" id="shShapes"></div>
+      <div class="row3">
+        <div class="field"><label for="shW">العرض (مم)</label><input type="number" id="shW" value="80" min="10" max="250"></div>
+        <div class="field"><label for="shD">العمق (مم)</label><input type="number" id="shD" value="80" min="10" max="250"></div>
+        <div class="field"><label for="shH">الارتفاع (مم)</label><input type="number" id="shH" value="50" min="5" max="250"></div>
+      </div>
+      <div class="field sh-corner"><label for="shCorner">استدارة الزوايا <output id="shCornerO">6</output> مم</label><input type="range" id="shCorner" min="0" max="30" value="6"></div>
+
+      <div class="sh-hollow">
+        <label class="chk"><input type="checkbox" id="shHollow" checked> مجوّف (علبة)</label>
+        <div class="sh-hollow-opts">
+          <div class="row2">
+            <div class="field"><label for="shWall">سماكة الجدار (مم)</label><input type="number" id="shWall" value="2.4" min="1.2" max="8" step="0.2"></div>
+            <div class="field"><label for="shClr">فراغ الغطاء (مم)</label><input type="number" id="shClr" value="0.3" min="0.1" max="0.8" step="0.1"></div>
+          </div>
+          <label class="chk"><input type="checkbox" id="shLid" checked> أضف غطاء</label>
+        </div>
+      </div>
+
+      <label class="lbl">الألوان</label>
+      <div class="colors5" id="shColors">
+        <label><input type="color" data-k="body" value="#e8e2d4"><span>الجسم</span></label>
+        <label class="sh-c-lid"><input type="color" data-k="lid" value="#c8a165"><span>الغطاء</span></label>
+        <label class="sh-c-deco"><input type="color" data-k="deco" value="#3b2a20"><span>النقش</span></label>
+        <label class="sh-c-loop"><input type="color" data-k="loop" value="#d4a017"><span>الحلقة</span></label>
+      </div>
+
+      <div class="field sh-deco"><label for="shContent">النقش</label>
+        <select id="shContent"><option value="none">بدون</option><option value="photo">🖼️ صورتي بارزة (تدرّج)</option><option value="logo">🔷 شعار / ظل الصورة</option><option value="text">✍️ اسم / كتابة</option></select></div>
+      <div class="field sh-img"><label for="shImg">الصورة</label><input type="file" id="shImg" accept="image/*">
+        <label class="chk"><input type="checkbox" id="shBg"> إزالة الخلفية تلقائياً</label>
+        <label class="chk sh-photo-only"><input type="checkbox" id="shInv"> عكس (الداكن أعلى)</label>
+        <div class="field sh-photo-only"><label for="shContrast">التباين <output id="shContrastO">1.2</output></label><input type="range" id="shContrast" min="0.5" max="2.5" step="0.1" value="1.2"></div>
+        <div class="field sh-logo-only"><label for="shThresh">العتبة <output id="shThreshO">128</output></label><input type="range" id="shThresh" min="20" max="240" value="128"></div>
+      </div>
+      <div class="field sh-text"><label for="shText1">الكتابة</label><input id="shText1" value="Bean House" maxlength="30"></div>
+      <div class="field sh-text"><label for="shText2">سطر ثانٍ (اختياري)</label><input id="shText2" maxlength="30"></div>
+      <div class="field sh-text"><label for="shFont">الخط</label>
+        <select id="shFont"><option>Cairo</option><option>Tajawal</option><option>Reem Kufi</option><option>Lalezar</option><option>Changa</option><option>Lemonada</option></select></div>
+      <div class="sh-decoopts">
+        <div class="field"><label for="shFaces">الأوجه المنقوشة</label>
+          <select id="shFaces"><option value="front">الأمام فقط</option><option value="top">الأعلى فقط</option><option value="front_back">الأمام والخلف</option><option value="sides4">الجوانب الأربعة</option><option value="all5">كل الأوجه</option></select></div>
+        <div class="field"><label for="shDepth">بروز النقش <output id="shDepthO">1.2</output> مم</label><input type="range" id="shDepth" min="0.4" max="4" step="0.2" value="1.2"></div>
+      </div>
+      <label class="chk sh-loopbox"><input type="checkbox" id="shLoop"> حلقة تعليق (ميدالية)</label>
+      <div class="field sh-loopbox sh-loopopt"><label for="shHole">فتحة الحلقة (مم)</label><input type="number" id="shHole" value="5" min="3" max="12" step="0.5"></div>
+    </aside>
+    <div class="stage">
+      <div class="viewer" id="shView">
+        <div class="vtools"><button class="icon-btn" id="shUndo" title="تراجع (Ctrl+Z)" disabled>↶</button><button class="icon-btn" id="shRedo" title="إعادة (Ctrl+Y)" disabled>↷</button><button class="icon-btn" id="shCmp" title="مقارنة الحجم">📏</button><button class="icon-btn on" id="shRot" title="تدوير تلقائي">⟳</button></div>
+        <div class="busy" id="shBusy" hidden>جارٍ التوليد…</div>
+      </div>
+      <div class="warn" id="shWarn" hidden></div>
+      <div class="stats" id="shStats"></div>
+      <div class="actions">
+        <button class="btn primary" id="shSTL">⬇ STL</button>
+        <button class="btn" id="sh3MF">🎨 3MF ملوّن</button>
+        <button class="btn" id="shZip">ملف لكل جزء ZIP</button>
+        <button class="btn" id="shPNG">📷 صورة</button>
+        <button class="btn" id="shAR">📱 AR</button>
+        <button class="btn wa" id="shOrder">🛒 اطلبها طباعة</button>
+      </div>
+      <p class="hint">كل المقاسات بالمليمتر وتطبع كما هي. الغطاء يُطبع بجانب العلبة بوضعية التركيب (الحافة للأسفل) — جرّب مقاس الغطاء بطابعتك وعدّل «فراغ الغطاء» إذا كان ضيقاً أو واسعاً.</p>
     </div>
   </div>
 </section>

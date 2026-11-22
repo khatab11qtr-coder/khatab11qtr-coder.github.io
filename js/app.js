@@ -5,6 +5,7 @@ import { TEMPLATES, rasterize, buildSolids, buildSolidsAsync, makeStencil } from
 import { lithophane, relief, faceRelief, cookieCutter, removeBackground } from './photo.js';
 import { export3MF, arrange, bedOutline, BEDS } from './export.js';
 import { buildCup, buildModel, MODELS } from './cup3d.js';
+import { buildShape, SHAPES } from './shapes.js';
 import { setLang } from './i18n.js';
 import { modal, openAR, storyImage, STORY_STYLES, designURL, shareLink, parseHash } from './extras.js';
 import * as AI from './ai.js';
@@ -82,6 +83,7 @@ function go(id, push = true) {
   window.scrollTo({ top: 0, behavior: push ? 'smooth' : 'auto' });
   if (id === 'keychain') K.ensure();
   if (id === 'cup3d') C3.ensure();
+  if (id === 'shapes') SH.ensure();
   if (id === 'order') O.render();
   if (id === 'gallery') G.load();
   if (id === 'occasions') G.load('gallery/occasions.json', '#occGrid');
@@ -93,8 +95,8 @@ document.addEventListener('click', (e) => {
 
 /* ================= تراجع / إعادة ================= */
 const hist = {
-  S: { k: { past: [], future: [], cur: null, lock: false }, c: { past: [], future: [], cur: null, lock: false } },
-  snap(P) { const o = { ...P }; delete o.logoStencil; delete o.logoShape; return JSON.stringify(o); },
+  S: { k: { past: [], future: [], cur: null, lock: false }, c: { past: [], future: [], cur: null, lock: false }, s: { past: [], future: [], cur: null, lock: false } },
+  snap(P) { const o = { ...P }; delete o.logoStencil; delete o.logoShape; delete o.photo; return JSON.stringify(o); },
   push(ns, P) {
     const S = this.S[ns], v = this.snap(P);
     if (S.lock) { S.lock = false; S.cur = v; this.ui(); return; }
@@ -107,20 +109,20 @@ const hist = {
     if (!from.length) return;
     to.push(S.cur); S.cur = from.pop(); S.lock = true;
     const P = JSON.parse(S.cur);
-    if (ns === 'k') { K.write({ ...P, logoStencil: K.logoStencil }); K.update(); } else { C3.write(P); C3.update(); }
+    if (ns === 'k') { K.write({ ...P, logoStencil: K.logoStencil }); K.update(); } else if (ns === 's') { SH.write(P); SH.update(); } else { C3.write(P); C3.update(); }
     this.ui();
   },
   ui() {
-    for (const ns of ['k', 'c']) {
+    for (const ns of ['k', 'c', 's']) {
       const S = this.S[ns];
-      const u = document.getElementById(ns + 'Undo'), r = document.getElementById(ns + 'Redo');
+      const u = document.getElementById((ns === 's' ? 'sh' : ns) + 'Undo'), r = document.getElementById((ns === 's' ? 'sh' : ns) + 'Redo');
       if (u) u.disabled = !S.past.length; if (r) r.disabled = !S.future.length;
     }
   },
 };
 document.addEventListener('keydown', (e) => {
   if (!(e.ctrlKey || e.metaKey) || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
-  const ns = $('#keychain').classList.contains('active') ? 'k' : $('#cup3d').classList.contains('active') ? 'c' : null;
+  const ns = $('#keychain').classList.contains('active') ? 'k' : $('#cup3d').classList.contains('active') ? 'c' : $('#shapes').classList.contains('active') ? 's' : null;
   if (!ns) return;
   const k = e.key.toLowerCase();
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); hist.go(ns, -1); }
@@ -665,6 +667,148 @@ $('#cPNG').onclick = () => fetch(C3.view.snapshot()).then((r) => r.blob()).then(
 $('#cOrder').onclick = () => { O.source = 'cup3d'; go('order'); };
 
 
+/* ================= مجسم من أبعادك ================= */
+const SH_PRESETS = [
+  { n: '🎁 صندوق هدية', v: { shape: 'box', w: 90, d: 90, h: 55, corner: 8, hollow: true, lid: true, wall: 2.4, content: 'text', faces: 'top', text1: 'Gift' } },
+  { n: '💍 علبة خاتم', v: { shape: 'cyl', w: 56, d: 56, h: 40, hollow: true, lid: true, wall: 2, content: 'none' } },
+  { n: '✏️ حامل أقلام', v: { shape: 'cyl', w: 80, d: 80, h: 100, hollow: true, lid: false, wall: 3, content: 'text', faces: 'front', text1: 'Pens' } },
+  { n: '🖼️ لوح صورة', v: { shape: 'box', w: 100, d: 10, h: 130, corner: 4, hollow: false, content: 'photo', faces: 'front', depth: 1.6 } },
+  { n: '🧊 مكعب', v: { shape: 'box', w: 40, d: 40, h: 40, corner: 0, hollow: false, content: 'text', faces: 'sides4', text1: 'A' } },
+  { n: '❤️ علبة قلب', v: { shape: 'heart', w: 90, d: 85, h: 40, hollow: true, lid: true, wall: 2.4, content: 'none' } },
+  { n: '🔮 كرة', v: { shape: 'sphere', w: 60, d: 60, h: 60, content: 'none', loop: true } },
+  { n: '🔺 هرم', v: { shape: 'pyramid', w: 60, d: 60, h: 60, content: 'none' } },
+];
+const SH = {
+  view: null, parts: null, P: null, img: null, stencil: null, busy: false, pending: false,
+  shape: store.get('s_shape', 'box'), colorsBy: store.get('s_colors', {}),
+  ensure() { if (!this.view) { this.view = new Viewer($('#shView')); this.view.autoRotate = true; this.update(); } },
+  num(id, lo, hi, def) { const v = parseFloat($('#' + id).value); return Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : def)); },
+  colors() { const o = {}; $$('#shColors input').forEach((e) => (o[e.dataset.k] = e.value)); return o; },
+  src() { if (!this.img) return null; if ($('#shBg').checked) { this.img.clean ||= removeBackground(this.img.img); return this.img.clean; } return this.img.img; },
+  makeStencil() { const s = this.src(); if (!s) { this.stencil = null; return; } this.stencil = makeStencil(s, { hasAlpha: alphaFrac(s) > 0.02, threshold: +$('#shThresh').value }).detail; },
+  read() {
+    const shape = this.shape, w = this.num('shW', 10, 250, 80), d = this.num('shD', 10, 250, 80), h = this.num('shH', 5, 250, 50);
+    return {
+      shape, w, d, h, corner: Math.min(+$('#shCorner').value, w / 2, d / 2), hollow: $('#shHollow').checked, lid: $('#shLid').checked,
+      wall: Math.min(this.num('shWall', 1.2, 8, 2.4), Math.min(w, d) / 2 - 1), clearance: this.num('shClr', 0.1, 0.8, 0.3),
+      content: SHAPES[shape].flat ? $('#shContent').value : 'none', faces: $('#shFaces').value, depth: +$('#shDepth').value,
+      contrast: +$('#shContrast').value, invert: $('#shInv').checked, text1: $('#shText1').value.trim(), text2: $('#shText2').value.trim(), font: $('#shFont').value,
+      loop: $('#shLoop').checked, hole: this.num('shHole', 3, 12, 5), colors: this.colors(),
+      photo: this.src(), logoStencil: this.stencil,
+    };
+  },
+  write(P) {
+    const set = (id, v) => { const e = $(id); if (e && v != null) e.type === 'checkbox' ? (e.checked = !!v) : (e.value = v); };
+    this.setShape(P.shape || 'box', false);
+    set('#shW', P.w); set('#shD', P.d); set('#shH', P.h); set('#shCorner', P.corner); set('#shHollow', P.hollow); set('#shLid', P.lid);
+    set('#shWall', P.wall); set('#shClr', P.clearance); set('#shContent', P.content); set('#shFaces', P.faces); set('#shDepth', P.depth);
+    set('#shContrast', P.contrast); set('#shInv', P.invert); set('#shText1', P.text1); set('#shText2', P.text2); set('#shFont', P.font);
+    set('#shLoop', P.loop); set('#shHole', P.hole);
+    if (P.colors) $$('#shColors input').forEach((e) => { if (P.colors[e.dataset.k]) e.value = P.colors[e.dataset.k]; });
+    ['shCorner', 'shDepth', 'shContrast'].forEach((id) => ($('#' + id + 'O').textContent = $('#' + id).value));
+    this.sync();
+  },
+  setShape(s, upd = true) {
+    if (!SHAPES[s]) s = 'box';
+    this.shape = s; store.set('s_shape', s);
+    $$('#shShapes .tpl').forEach((b) => b.classList.toggle('active', b.dataset.s === s));
+    this.sync(); if (upd) this.update();
+  },
+  sync() {
+    const S = SHAPES[this.shape], hollow = S.hollow && $('#shHollow').checked, lid = hollow && $('#shLid').checked, c = $('#shContent').value, deco = S.flat && c !== 'none';
+    const vis = (sel, on) => $$(sel).forEach((e) => (e.hidden = !on));
+    vis('.sh-corner', this.shape === 'box'); vis('.sh-hollow', S.hollow); vis('.sh-hollow-opts', hollow);
+    vis('.sh-deco', S.flat); vis('.sh-img', S.flat && (c === 'photo' || c === 'logo')); vis('.sh-photo-only', c === 'photo'); vis('.sh-logo-only', c === 'logo');
+    vis('.sh-text', S.flat && c === 'text'); vis('.sh-decoopts', deco);
+    const loopOk = !S.noLoop && !hollow; vis('.sh-loopbox', loopOk);
+    vis('.sh-loopopt', loopOk && $('#shLoop').checked);
+    vis('.sh-c-lid', lid); vis('.sh-c-deco', deco); vis('.sh-c-loop', loopOk && $('#shLoop').checked);
+    const ok = this.shape === 'box' ? ['front', 'top', 'front_back', 'sides4', 'all5'] : this.shape === 'cyl' ? ['front', 'top', 'front_back'] : ['top'];
+    $$('#shFaces option').forEach((o) => (o.hidden = o.disabled = !ok.includes(o.value)));
+    if (!ok.includes($('#shFaces').value)) $('#shFaces').value = ok[0];
+  },
+  async update() {
+    if (!this.view) return;
+    if (this.busy) { this.pending = true; return; }
+    this.busy = true; $('#shBusy').hidden = false; await nextFrame();
+    try {
+      const P = this.read();
+      if (P.content === 'text') { try { await document.fonts.load(`800 40px "${P.font}"`, P.text1 + P.text2 || 'a'); } catch {} }
+      const out = buildShape(P), first = !this.parts, key = P.shape + P.w + P.d + P.h;
+      const defs = { body: '#e8e2d4', lid: '#c8a165', deco: '#3b2a20', loop: '#d4a017' };
+      this.parts = out.map((p) => ({ ...p, name: PART_NAMES[p.key] || p.key, color: P.colors[p.key] || defs[p.key] }));
+      this.P = P;
+      this.view.show(this.parts, { keepView: !first && this.lastKey === key });
+      if (first || this.lastKey !== key) {
+        const b = bboxOf(mergeTris(this.parts.map((p) => p.tris))).size, s = Math.max(b[0], b[1] * 0.8, b[2]);
+        this.view.camera.position.set(s * 0.75, -s * 1.9, s * 1.2); this.view.controls.target.set(0, 0, b[2] * 0.45); this.view.dirty = true;
+      }
+      this.lastKey = key;
+      hist.push('s', P);
+      this.stats = costStats(mergeTris(this.parts.map((p) => p.tris)));
+      $('#shStats').innerHTML = this.stats.html;
+      const w = [], S = SHAPES[P.shape];
+      if (['photo', 'logo'].includes(P.content) && !this.img) w.push('ارفع الصورة اللي تبي تنقشها.');
+      if (P.content === 'text' && !P.text1) w.push('اكتب النص اللي تبيه.');
+      if (P.hollow && S.hollow && !P.lid && ['top', 'all5'].includes(P.faces) && P.content !== 'none') w.push('الأعلى مفتوح بدون غطاء — النقش على «الأعلى» ما انحط. أضف غطاء أو اختر وجهاً ثانياً.');
+      if (P.hollow && S.hollow && P.wall < 1.6) w.push('الجدار رفيع — 1.6 مم أو أكثر أقوى بعد الطباعة.');
+      if (P.hollow && S.hollow && P.lid && this.stats.box[0] > 256) w.push('العلبة مع الغطاء أعرض من أغلب البلاطات (256 مم) — صغّر المقاس أو اطبع كل قطعة لوحدها.');
+      if (P.hollow && S.hollow && P.lid) w.push('الغطاء مطبوع بوضعية التركيب (الحافة للأسفل) — يحتاج دعامات خفيفة أو اقلبه عند الطباعة.');
+      if (P.shape === 'cyl' && P.w !== P.d && P.content !== 'none' && P.faces !== 'top') w.push('النقش الملفوف يحتاج أسطوانة دائرية (العرض = العمق).');
+      if (P.shape === 'sphere') w.push('الكرة لها قاعدة مسطحة صغيرة عشان تثبت على السرير.');
+      if ((P.shape === 'cone' || P.shape === 'pyramid') && P.h > P.w * 1.5) w.push('الارتفاع كبير على القاعدة — الشكل رفيع وقد يهتز أثناء الطباعة.');
+      $('#shWarn').hidden = !w.length; $('#shWarn').innerHTML = w.map((x) => '⚠️ ' + x).join('<br>');
+    } catch (e) { console.error(e); toast('تعذر توليد المجسم: ' + e.message); }
+    finally { this.busy = false; $('#shBusy').hidden = true; if (this.pending) { this.pending = false; this.update(); } }
+  },
+  recolor() {
+    const c = this.colors(); this.colorsBy = c; store.set('s_colors', c);
+    if (this.parts) this.parts.forEach((p, i) => { if (c[p.key]) { p.color = c[p.key]; this.view.group.children[i]?.material.color.set(c[p.key]); } });
+    if (this.P) this.P.colors = c;
+    if (this.view) this.view.dirty = true;
+  },
+  base() { return `${this.P?.shape}_${this.P?.w}x${this.P?.d}x${this.P?.h}mm`; },
+};
+PART_NAMES.body = 'الجسم'; PART_NAMES.lid = 'الغطاء';
+$('#shShapes').innerHTML = Object.entries(SHAPES).map(([k, S]) => `<button class="tpl" data-s="${k}" title="${S.label}"><span>${S.icon}</span>${S.label}</button>`).join('');
+$('#shShapes').addEventListener('click', (e) => { const b = e.target.closest('.tpl'); if (b) SH.setShape(b.dataset.s); });
+$('#shPresets').innerHTML = SH_PRESETS.map((p, i) => `<button class="chip" data-i="${i}">${p.n}</button>`).join('');
+$('#shPresets').onclick = (e) => {
+  const b = e.target.closest('[data-i]'); if (!b) return;
+  const base = { corner: 6, hollow: false, lid: false, wall: 2.4, clearance: 0.3, content: 'none', faces: 'front', depth: 1.2, loop: false, text1: 'Bean House', text2: '' };
+  SH.write({ ...base, ...SH_PRESETS[+b.dataset.i].v }); SH.update();
+};
+if (store.get('s_colors', null)) $$('#shColors input').forEach((e) => { const c = SH.colorsBy[e.dataset.k]; if (c) e.value = c; });
+SH.setShape(SH.shape, false);
+const shUpd = debounce(() => SH.update(), 300);
+$$('#shapes .panel input, #shapes .panel select').forEach((el) => {
+  if (el.id === 'shImg' || el.type === 'color') return;
+  el.addEventListener('input', () => {
+    const o = $('#' + el.id + 'O'); if (o) o.textContent = el.value;
+    if (['shContent', 'shHollow', 'shLid', 'shLoop'].includes(el.id)) SH.sync();
+    if ((el.id === 'shBg' || el.id === 'shThresh') && SH.img) SH.makeStencil();
+    shUpd();
+  });
+});
+$('#shColors').addEventListener('input', () => SH.recolor());
+$('#shImg').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { SH.img = await loadImage(f); SH.makeStencil(); if (!['photo', 'logo'].includes($('#shContent').value)) $('#shContent').value = 'photo'; SH.sync(); SH.update(); } catch (err) { toast(err.message); }
+});
+$('#shRot').onclick = (e) => { SH.view.autoRotate = !SH.view.autoRotate; e.currentTarget.classList.toggle('on', SH.view.autoRotate); };
+$('#shCmp').onclick = (e) => { const on = SH.view.toggleRef(); e.currentTarget.classList.toggle('on', on); if (on) toast('📏 بطاقة بنكية بمقاسها الحقيقي 85×54 مم للمقارنة'); };
+$('#shUndo').onclick = () => hist.go('s', -1); $('#shRedo').onclick = () => hist.go('s', 1);
+$('#sh3MF').onclick = async () => { if (!SH.parts) return; download(await export3MF([{ name: SH.base(), parts: SH.parts }]), SH.base() + '.3mf'); toast('3MF ملوّن جاهز ✓'); };
+$('#shSTL').onclick = () => { if (SH.parts) download(toSTL(mergeTris(SH.parts.map((p) => p.tris)), 'shape'), SH.base() + '.stl'); };
+$('#shZip').onclick = async () => {
+  if (!SH.parts) return;
+  const zip = new JSZip(); SH.parts.forEach((p, i) => zip.file(`${i + 1}_${p.key}_${p.color.slice(1)}.stl`, toSTL(p.tris, p.key)));
+  download(await zip.generateAsync({ type: 'blob' }), SH.base() + '_parts.zip');
+};
+$('#shPNG').onclick = () => fetch(SH.view.snapshot()).then((r) => r.blob()).then((b) => download(b, SH.base() + '.png'));
+$('#shAR').onclick = () => { if (SH.parts) openAR(SH.parts, { title: SH.P.text1 || '' }); };
+$('#shOrder').onclick = () => { O.source = 'shape'; go('order'); };
+
 /* ================= الطلب ================= */
 const MODE_LABEL = { lithophane: 'ليثوفين', relief: 'نقش بارز', face: 'نقش وجه', keychain: 'ميدالية من صورة', cookie: 'قالب كوكيز' };
 const O = {
@@ -685,6 +829,20 @@ const O = {
         colorsText: C3.parts.map((p) => `${names[p.key]} ${p.color}`).join('، '),
         snap: () => C3.view.snapshot(),
         files: async () => [[C3.base() + '.3mf', await export3MF([{ name: C3.base(), parts: C3.parts }])], [C3.base() + '.stl', toSTL(mergeTris(C3.parts.map((p) => p.tris)))]],
+      };
+    }
+    if (this.source === 'shape' && SH.parts) {
+      const P = SH.P, S = SHAPES[P.shape], names = PART_NAMES;
+      return {
+        title: `${S.label} ${P.w}×${P.d}×${P.h} مم`, unit: SH.stats.price,
+        rows: [
+          ['النوع', `${S.icon} ${S.label}`], ['التجويف', P.hollow && S.hollow ? (P.lid ? 'مجوّف + غطاء' : 'مجوّف') : '—'], ['المقاس', `${P.w} × ${P.d} × ${P.h} مم`],
+          ['النقش', { none: '—', photo: 'صورة بارزة', logo: 'شعار', text: 'كتابة' }[P.content]], ['الكتابة', P.content === 'text' ? [P.text1, P.text2].filter(Boolean).join(' / ') : '—'],
+          ['الألوان', SH.parts.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
+        ],
+        colorsText: SH.parts.map((p) => `${names[p.key]} ${p.color}`).join('، '),
+        snap: () => SH.view.snapshot(),
+        files: async () => [[SH.base() + '.3mf', await export3MF([{ name: SH.base(), parts: SH.parts }])], [SH.base() + '.stl', toSTL(mergeTris(SH.parts.map((p) => p.tris)))]],
       };
     }
     if (this.source === 'photo' && PH.last) {
@@ -712,6 +870,7 @@ const O = {
   },
   async render() {
     if (this.source === 'cup3d' && !C3.parts) { C3.ensure(); await new Promise((r) => setTimeout(r, 1500)); }
+    if (this.source === 'shape' && !SH.parts) { SH.ensure(); await new Promise((r) => setTimeout(r, 1500)); }
     if (this.source === 'keychain') {
       if (!K.view) { K.ensure(); await new Promise((r) => setTimeout(r, 900)); }
       else if (K.platePreview) await K.update();

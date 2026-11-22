@@ -302,3 +302,10 @@ body.mod-takeaway .m-sleeve { display: flex; }
 .tour-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .tour-dots i.on { background: var(--accent); width: 22px; border-radius: 6px; }
 .tour .actions { justify-content: center; }
+
+/* مجسم من أبعادك */
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip { font: inherit; font-size: .82rem; padding: 6px 10px; border-radius: 999px; border: 1px solid #8884; background: transparent; color: inherit; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+#shShapes { grid-template-columns: repeat(3, 1fr); }

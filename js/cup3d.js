@@ -14,7 +14,7 @@ function signedVol(t) {
 function flip(t) {
   for (let b = 0; b < t.length; b += 9) for (let k = 0; k < 3; k++) { const x = t[b + 3 + k]; t[b + 3 + k] = t[b + 6 + k]; t[b + 6 + k] = x; }
 }
-const orient = (t) => { if (signedVol(t) < 0) flip(t); return t; };
+export const orient = (t) => { if (signedVol(t) < 0) flip(t); return t; };
 
 /** تدوير مقطع (r,z) حول المحور Z. open: يبدأ وينتهي على المحور. loop: حلقة مغلقة لا تلمس المحور */
 export function revolve(profile, N, loop = false) {
@@ -68,7 +68,7 @@ function bean(ctx, cx, cy, rx, ry, rot) {
 }
 
 /** يرسم محتوى النقش على مستطيل مسطح (مم) ويرجع حقل بكسلات */
-function decoField(P, Wd, Hd, px, side) {
+export function decoField(P, Wd, Hd, px, side) {
   const w = Math.ceil(Wd / px) + 1, h = Math.ceil(Hd / px) + 1;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const ctx = c.getContext('2d', { willReadFrequently: true });
@@ -226,7 +226,7 @@ const bez = (p0, p1, p2, p3, n) => Array.from({ length: n + 1 }, (_, i) => {
   return [0, 1, 2].map((k) => u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]);
 });
 
-function box(x0, y0, z0, x1, y1, z1) {
+export function box(x0, y0, z0, x1, y1, z1) {
   const v = [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]];
   const f = [[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]];
   return orient(new Float32Array(f.flatMap((t) => t.flatMap((i) => v[i]))));
