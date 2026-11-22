@@ -1,0 +1,100 @@
+[
+ {
+  "img": "occ_crescent.png",
+  "title": "هلال رمضان",
+  "desc": "توزيعات رمضان بالأسماء أو باسم الكوفي.",
+  "preset": {
+   "template": "crescent",
+   "text1": "رمضان كريم",
+   "text2": "1448",
+   "font": "Reem Kufi",
+   "size": 55,
+   "c1": "#1d2b53",
+   "c2": "#e8c76a"
+  }
+ },
+ {
+  "img": "occ_lantern.png",
+  "title": "فانوس رمضان",
+  "desc": "فانوس بنافذة للاسم — حلو للقرقيعان.",
+  "preset": {
+   "template": "lantern",
+   "text1": "رمضان",
+   "text2": "كريم",
+   "font": "Lalezar",
+   "size": 60,
+   "c1": "#5b2a86",
+   "c2": "#f2c14e"
+  }
+ },
+ {
+  "img": "occ_eid.png",
+  "title": "عيدية العيد",
+  "desc": "ميدالية دائرية «عيد مبارك» تنحط مع العيدية.",
+  "preset": {
+   "template": "circle",
+   "text1": "عيد مبارك",
+   "text2": "EID MUBARAK",
+   "font": "Reem Kufi",
+   "size": 45,
+   "c1": "#0f5e4a",
+   "c2": "#f5e6c8"
+  }
+ },
+ {
+  "img": "occ_qatar.png",
+  "title": "اليوم الوطني",
+  "desc": "علم قطر بالرؤوس التسعة — 18 ديسمبر.",
+  "preset": {
+   "template": "qatar",
+   "text1": "قطر",
+   "text2": "18 DEC",
+   "font": "Reem Kufi",
+   "size": 60,
+   "c1": "#8a1538",
+   "c2": "#ffffff"
+  }
+ },
+ {
+  "img": "occ_grad.png",
+  "title": "التخرّج",
+  "desc": "قبعة تخرّج باسم الخريج وسنة التخرج.",
+  "preset": {
+   "template": "gradcap",
+   "text1": "Class of 2026",
+   "text2": "مبروك التخرّج",
+   "font": "Cairo",
+   "size": 55,
+   "c1": "#151515",
+   "c2": "#d4a017"
+  }
+ },
+ {
+  "img": "occ_rings.png",
+  "title": "زواج وملكة",
+  "desc": "خاتمين وأسماء العرسان — توزيعات للضيوف.",
+  "preset": {
+   "template": "rings",
+   "text1": "S & A",
+   "text2": "2026",
+   "font": "Cairo",
+   "size": 55,
+   "c1": "#f3e9dc",
+   "c2": "#c9a227"
+  }
+ },
+ {
+  "img": "occ_baby.png",
+  "title": "مواليد",
+  "desc": "ملابس مولود باسم الطفل — توزيعات الاستقبال.",
+  "preset": {
+   "template": "baby",
+   "text1": "Sara",
+   "text2": "أهلاً بالمولودة",
+   "font": "Lemonada",
+   "size": 50,
+   "c1": "#f4c2c2",
+   "c2": "#ffffff"
+  }
+ }
+]

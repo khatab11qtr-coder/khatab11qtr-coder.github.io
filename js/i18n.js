@@ -1,0 +1,203 @@
+// دعم اللغة الإنجليزية: ترجمة نصوص الصفحة تلقائياً (بما فيها النصوص التي تظهر لاحقاً)
+const D = {
+  // عام وتنقل
+  'طبعة 3D': 'Tab3a 3D', 'الرئيسية': 'Home', 'صمّم ميدالية': 'Keychains', '☕ كوب 3D': '☕ 3D Cup', '🎉 مناسبات': '🎉 Occasions',
+  'صورة ← مجسم': 'Photo → 3D', 'مجسم كامل AI': 'AI 3D Model', '☕ للكوفيهات': '☕ For Cafés', 'أعمالنا': 'Our Work', '🛒 اطلب': '🛒 Order',
+  'من نحن': 'About', 'دليل الطباعة': 'Print Guide', 'تبديل الوضع الليلي': 'Toggle dark mode', 'تبديل الوضع': 'Toggle theme', 'English / عربي': 'English / عربي',
+  '— كل المعالجة داخل متصفحك.': '— everything runs in your browser.', 'مجسم AI': 'AI Model', 'اطلب': 'Order', 'إغلاق': 'Close', 'إزالة': 'Remove', 'حذف': 'Delete',
+  // الرئيسية
+  'جاهز للطباعة • STL و 3MF ملوّن • بدون تسجيل': 'Print-ready • STL & color 3MF • No sign-up',
+  'صمّم مجسمك ثلاثي الأبعاد': 'Design your 3D model', 'واطبعه اليوم': 'and print it today',
+  'ميداليات بأشكال القهوة باسم الكوفي أو شعاره، ستاندات QR للطاولات، مساند أكواب، وتحويل صورك لمجسمات — كله داخل متصفحك وصورك ما تطلع من جهازك.': 'Coffee-shaped keychains with your café name or logo, QR table stands, coasters, and photo-to-3D — all inside your browser; your photos never leave your device.',
+  '☕ كوب 3D بألوانك': '☕ 3D cup in your colors', '🏷️ صمّم ميدالية': '🏷️ Design a keychain', '🖼️ حوّل صورة لمجسم': '🖼️ Photo to 3D', '🛒 اطلب طباعة': '🛒 Order a print',
+  'كوب 3D كامل': 'Full 3D cup', 'ميدالية كوب مجسّم بغطاء وكم وحلقة — اختر لون كل قطعة واكتب اسمك أو حط شعارك على الكم.': 'A 3D cup keychain with lid, sleeve and loop — pick a color for every part and add your name or logo on the sleeve.',
+  '8 أشكال قهوة': '8 coffee shapes', 'تيك أواي، آيس، مج، حبة قهوة، دلة، فنجان عربي، V60، ومكينة إسبريسو — بالاسم أو بشعار الكوفي.': 'Takeaway, iced, mug, coffee bean, dallah, Arabic cup, V60 and espresso machine — with your name or café logo.',
+  'ميدالية بوجهين': 'Double-sided keychain', 'الاسم من قدام، وحساب الانستقرام أو QR من ورا بلون ثاني مدموج في الطبقة الأولى.': 'Name on the front, Instagram handle or QR on the back, inlaid in a second color.',
+  'ستاند QR ومساند أكواب': 'QR stands & coasters', 'لوحة منيو للطاولة مع قاعدة تركيب، ومسند أكواب منقوش باسم الكوفي.': 'A table menu sign with a slotted base, and coasters embossed with your café name.',
+  'صور ← مجسمات': 'Photos → 3D', 'ليثوفين مسطح أو دائري أو قلب أو منحني، نقش وجه، ميدالية من شعار، وقالب كوكيز — مع إزالة الخلفية تلقائياً.': 'Flat, round, heart or curved lithophanes, face reliefs, logo keychains and cookie cutters — with automatic background removal.',
+  'بلاطة كاملة بضغطة': 'Full plate in one click', 'قائمة أسماء أو عدد نسخ يترتب تلقائياً على مقاس طابعتك — 3MF ملوّن جاهز لـ Bambu.': 'A list of names or copies, auto-arranged for your printer bed — color 3MF ready for Bambu.',
+  'اطلب بأسعار الجملة': 'Bulk pricing', 'خصم تلقائي حسب الكمية، وأرسل طلبك مع صورة التصميم عبر واتساب.': 'Automatic quantity discounts; send your order with a design image via WhatsApp.',
+  // الميداليات
+  'مصمم الميداليات': 'Keychain designer', 'أشكال القهوة': 'Coffee shapes', 'أشكال عامة': 'General shapes', 'للكوفي والبيت': 'Café & home', 'مناسبات': 'Occasions',
+  'الاسم الرئيسي': 'Main name', 'سطر ثانٍ (اختياري)': 'Second line (optional)', 'رابط الـ QR (منيو، انستقرام، موقع)': 'QR link (menu, Instagram, website)',
+  '🖼️ شعار الكوفي': '🖼️ Café logo', 'مكان الشعار': 'Logo placement', 'زخرفة مع الاسم': 'Decoration with name', 'بدل الاسم': 'Instead of name', 'بدون شعار': 'No logo',
+  'إزالة الخلفية تلقائياً': 'Remove background automatically', 'العتبة': 'Threshold', 'عكس': 'Invert', 'الخط': 'Font', 'النص': 'Text', 'بارز': 'Raised', 'محفور': 'Engraved',
+  'الارتفاع': 'Height', 'العرض': 'Width', 'القطر': 'Diameter', 'مم': 'mm', '🔁 الوجه الخلفي': '🔁 Back side', 'المحتوى': 'Content', 'بدون': 'None',
+  'نص (انستقرام / رقم)': 'Text (Instagram / phone)', 'QR (نفس الرابط فوق)': 'QR (same link as above)', 'نص الخلف': 'Back text',
+  'يُطبع محفوراً في أول الطبقات ومعبأً باللون الثاني — يطلع مسطح وناعم على البلاطة.': 'Printed inlaid in the first layers with the second color — flat and smooth on the bed.',
+  '⚙️ إعدادات متقدمة': '⚙️ Advanced settings', 'سماكة القاعدة (مم)': 'Base thickness (mm)', 'ارتفاع البارز (مم)': 'Raised height (mm)', 'قطر الثقب (مم)': 'Hole diameter (mm)',
+  'الدقة': 'Resolution', 'عادية 0.2مم': 'Normal 0.2mm', 'عالية 0.15مم': 'High 0.15mm', 'فائقة 0.1مم': 'Ultra 0.1mm', 'فوهة الطابعة': 'Nozzle', '0.2 مم': '0.2 mm', '0.4 مم': '0.4 mm', '0.6 مم': '0.6 mm',
+  'إطار بارز': 'Raised border', 'زخارف': 'Decorations', 'لون القاعدة': 'Base color', 'لون النص': 'Text color',
+  '📐 بلاطة كاملة وطلبات بالجملة': '📐 Full plate & bulk orders', 'أسماء (اسم في كل سطر) — اتركها فارغة لنسخ التصميم الحالي': 'Names (one per line) — leave empty to copy the current design',
+  'عدد النسخ': 'Copies', 'الصيغة': 'Format', '3MF ملوّن': 'Color 3MF', 'الطابعة': 'Printer', '📐 رتّب على البلاطة': '📐 Arrange on plate', '📦 ملف لكل اسم ZIP': '📦 One file per name (ZIP)',
+  'تدوير تلقائي': 'Auto-rotate', 'منظر علوي': 'Top view', 'اقلب لرؤية الوجه الخلفي': 'Flip to see the back', 'عرض ثنائي الأبعاد': '2D view', 'جارٍ التوليد…': 'Generating…',
+  '🎨 3MF ملوّن': '🎨 Color 3MF', 'ملفين STL للونين': '2 STLs for 2 colors', '📷 صورة': '📷 Image', '⭐ حفظ': '⭐ Save', '📱 AR': '📱 AR', '🖼️ صورة ستوري': '🖼️ Story image', '🔗 شارك': '🔗 Share',
+  '🛒 اطلبها طباعة': '🛒 Order this print',
+  // القوالب
+  'كوب تيك أواي': 'Takeaway cup', 'كوب آيس بشفاطة': 'Iced cup with straw', 'مج ببخار': 'Steaming mug', 'حبة قهوة': 'Coffee bean', 'دلة عربية': 'Arabic dallah', 'فنجان عربي': 'Arabic cup',
+  'V60 تقطير': 'V60 dripper', 'مكينة إسبريسو': 'Espresso machine', 'ميدالية اسم': 'Name tag', 'دائرية': 'Round', 'قلب': 'Heart', 'ميدالية QR': 'QR keychain', 'شكل الشعار': 'Logo shape',
+  'هلال رمضان': 'Ramadan crescent', 'فانوس': 'Lantern', 'علم قطر': 'Qatar flag', 'قبعة تخرّج': 'Graduation cap', 'خاتمين (زواج)': 'Rings (wedding)', 'ملابس مولود': 'Baby onesie',
+  'مسند أكواب': 'Coaster', 'ستاند طاولة': 'Table stand',
+  // كوب 3D
+  'ميدالية كوب 3D': '3D cup keychain', 'مجسم كامل من كل الجهات — كل قطعة بلونها.': 'Fully 3D from every side — each part in its own color.', 'ارتفاع الكوب': 'Cup height',
+  'الألوان': 'Colors', 'الغطاء': 'Lid', 'الكوب': 'Cup', 'الكم': 'Sleeve', 'النقش': 'Emboss', 'الحلقة': 'Loop', 'ألوان جاهزة': 'Color presets',
+  'النقش على الكم (الأمام)': 'Sleeve design (front)', '☕ حبتين قهوة': '☕ Two coffee beans', '✍️ اسم / كتابة': '✍️ Name / text', 'حبوب + اسم': 'Beans + name', '🖼️ شعار': '🖼️ Logo',
+  'الكتابة': 'Text', 'صورة الشعار': 'Logo image', 'خلف الكوب': 'Back of cup', 'كتابة': 'Text', 'حبتين قهوة': 'Two coffee beans', 'كتابة الخلف': 'Back text', 'حلقة التعليق': 'Hanging loop',
+  'فتحة الحلقة (مم)': 'Loop opening (mm)', 'النعومة': 'Smoothness', 'عادية': 'Normal', 'عالية': 'High', 'فائقة': 'Ultra',
+  '📱 شوفه في مكانك AR': '📱 See it in your space (AR)', 'ملف لكل لون ZIP': 'One file per color (ZIP)', '⬇ STL': '⬇ STL',
+  'يُطبع واقفاً بدون دعامات (الحواف مشطوفة 45°). الألوان المتعددة تحتاج طابعة ملونة (AMS/MMU) — أو اطبعه بلون واحد ولوّنه.': 'Prints standing without supports (45° chamfers). Multiple colors need a multi-material printer (AMS/MMU) — or print in one color and paint it.',
+  // الصور
+  'من صورة إلى مجسم': 'Photo to 3D', 'اسحب الصور هنا أو اضغط للاختيار': 'Drop photos here or tap to choose', 'يمكنك رفع أكثر من صورة — كل صورة تتحول لمجسم مستقل': 'You can upload several photos — each becomes its own model',
+  'نوع التحويل': 'Conversion type', '💡 ليثوفين': '💡 Lithophane', '🗿 نقش بارز': '🗿 Relief', '🙂 نقش وجه': '🙂 Face relief', '🔑 ميدالية': '🔑 Keychain', '🍪 قالب كوكيز': '🍪 Cookie cutter',
+  'حساسية الإزالة': 'Removal sensitivity', 'الشكل': 'Shape', 'مستطيل': 'Rectangle', 'دائري': 'Round', 'منحني (أباجورة)': 'Curved (lamp)', 'زاوية الانحناء': 'Curve angle',
+  'سريعة 0.3مم': 'Fast 0.3mm', 'عالية 0.2مم': 'High 0.2mm', 'فائقة 0.15مم': 'Ultra 0.15mm', 'قصوى 0.1مم (ملف كبير)': 'Max 0.1mm (large file)', 'التباين': 'Contrast', 'التنعيم': 'Smoothing',
+  'أقل سماكة': 'Min thickness', 'أعلى سماكة': 'Max thickness', 'إطار (مم)': 'Frame (mm)', 'القاعدة (مم)': 'Base (mm)', 'عمق النقش (مم)': 'Relief depth (mm)', 'عتبة فصل الشكل': 'Shape threshold',
+  'سماكة (مم)': 'Thickness (mm)', 'حافة حول الشكل (مم)': 'Outline margin (mm)', 'ارتفاع القاطع': 'Cutter height', 'سماكة الجدار': 'Wall thickness', 'عكس الألوان': 'Invert colors',
+  'محاكاة إضاءة خلفية': 'Simulate backlight', 'ارفع صورة لتظهر المعاينة هنا': 'Upload a photo to preview it here', 'جارٍ التحويل…': 'Converting…',
+  '⬇ STL للصورة المحددة': '⬇ STL for selected photo', '📦 تحويل كل الصور ZIP': '📦 Convert all photos (ZIP)',
+  'ليثوفين: لوحة رقيقة تظهر فيها الصورة بوضوح عند وضع ضوء خلفها. جرّب الشكل المنحني لعمل أباجورة.': 'Lithophane: a thin panel that reveals the photo when lit from behind. Try the curved shape to make a lamp.',
+  'نقش بارز: الأجزاء الفاتحة ترتفع والداكنة تنخفض — مناسب للوحات واللوقوهات والخرائط.': 'Relief: light areas rise and dark areas sink — great for plaques, logos and maps.',
+  'نقش وجه: يفصل الشخص عن الخلفية ويعطيه حجماً بارزاً مثل الميداليات المعدنية. صورة أمامية بإضاءة جيدة تعطي أفضل نتيجة.': 'Face relief: separates the person from the background and gives it volume like a medal. A well-lit front photo works best.',
+  'ميدالية من شكل الصورة: نفصل الشكل عن الخلفية ونضيف حلقة.': 'Keychain from the image shape: we separate it from the background and add a ring.',
+  'قاطع كوكيز بحدود الشكل: رسمة أو شعار بلون داكن على خلفية فاتحة.': 'Cookie cutter from the outline: a dark drawing or logo on a light background.',
+  // AI
+  'مجسم كامل من عدة صور': 'Full model from several photos', 'ارفع 1–4 صور لنفس الشيء': 'Upload 1–4 photos of the same object', 'خلفية سادة وإضاءة جيدة = نتيجة أدق': 'Plain background + good light = better result',
+  'صوّر نفس الشيء (تمثال، لعبة، شخصية، منتج) من الأمام والجنب والخلف — حتى 4 صور — والذكاء الاصطناعي يبني مجسماً كاملاً 360°، ثم نضبط مقاسه بالمليمتر ونجهّزه STL.': 'Photograph the same object (statue, toy, figure, product) from the front, side and back — up to 4 photos — and AI builds a full 360° model, then we scale it in millimeters and prepare an STL.',
+  'مفتاح Meshy API': 'Meshy API key', 'احصل عليه': 'Get one', 'يُحفظ في متصفحك فقط ويُرسل مباشرة لـ Meshy.': 'Stored only in your browser and sent directly to Meshy.',
+  '🧠 ابدأ التوليد': '🧠 Start generating', 'أو ارفع ملف GLB جاهز (من أي موقع AI) لتحويله STL بمقاس دقيق': 'Or upload a GLB file (from any AI site) to convert it to an accurately sized STL',
+  'المقاس (مم)': 'Size (mm)', 'يُطبق على': 'Applies to', 'أكبر بُعد': 'Largest dimension', 'النتيجة تظهر هنا': 'The result appears here', '⬇ تحميل STL': '⬇ Download STL', '⬇ GLB الأصلي': '⬇ Original GLB',
+  // المعرض والمناسبات
+  'نماذج من تصاميمنا': 'Sample designs', 'اضغط «صمّم مثلها» وعدّل الاسم والألوان على كيفك.': 'Tap “Design like this” and change the name and colors however you like.', '✏️ صمّم مثلها': '✏️ Design like this',
+  '🎉 ميداليات وتوزيعات المناسبات': '🎉 Occasion keychains & giveaways',
+  'رمضان، العيد، اليوم الوطني، التخرّج، الزواج، والمواليد — اختر قالب، اكتب الاسم، وحط قائمة الأسماء للتوزيعات وتطلع بلاطة كاملة جاهزة.': 'Ramadan, Eid, National Day, graduation, weddings and newborns — pick a template, type the name, and add a list of names for giveaways to get a full print plate.',
+  'كوب 3D مجسّم': '3D cup', 'غطاء وكوب وكم وحلقة — كل قطعة بلونها، وحبوب أو اسمك أو شعارك على الكم.': 'Lid, cup, sleeve and loop — each in its own color, with beans, your name or logo on the sleeve.',
+  'كوب تيك أواي': 'Takeaway cup', 'الاسم بارز على الكم مع غطاء وحلقة — الأكثر طلباً للكوفيهات.': 'Raised name on the sleeve with lid and ring — the most popular for cafés.',
+  'الحلقة في رأس الشفاطة، وموجة ومكعبات ثلج بارزة.': 'Ring at the top of the straw, with a raised wave and ice cubes.', 'للقهوة العربية والمجالس — بالعربي أو الإنجليزي.': 'For Arabic coffee and majlis — in Arabic or English.',
+  'فنجان مع صحن ونقشة زخرفية.': 'Cup with saucer and an ornamental pattern.', 'الاسم على لوحة المكينة وفنجان تحت البورتافلتر.': 'Name on the machine panel and a cup under the portafilter.',
+  'قمع التقطير، والمقبض هو مكان الحلقة.': 'The dripper cone — the handle doubles as the ring.', 'حبة بشق S بارز — مناسبة للمحامص.': 'A bean with a raised S groove — great for roasteries.',
+  'قطر 9 سم مع حبات قهوة حول الحافة.': '9 cm across with coffee beans around the edge.', 'ستاند منيو QR': 'QR menu stand', 'لوحة للطاولة + قاعدة تركيب — امسح وشوف المنيو.': 'Table sign + slotted base — scan to see the menu.',
+  'هدية أو توزيعات مناسبات.': 'A gift or event giveaway.', 'فانوس رمضان': 'Ramadan lantern', 'توزيعات رمضان بالأسماء أو باسم الكوفي.': 'Ramadan giveaways with names or your café name.',
+  'فانوس بنافذة للاسم — حلو للقرقيعان.': 'A lantern with a name window — lovely for Garangao.', 'عيدية العيد': 'Eid gift', 'ميدالية دائرية «عيد مبارك» تنحط مع العيدية.': 'A round “Eid Mubarak” keychain to go with the Eidiya.',
+  'اليوم الوطني': 'National Day', 'علم قطر بالرؤوس التسعة — 18 ديسمبر.': 'The Qatar flag with its nine points — 18 December.', 'التخرّج': 'Graduation', 'قبعة تخرّج باسم الخريج وسنة التخرج.': 'A graduation cap with the graduate’s name and year.',
+  'زواج وملكة': 'Weddings', 'خاتمين وأسماء العرسان — توزيعات للضيوف.': 'Two rings with the couple’s names — guest giveaways.', 'مواليد': 'Newborns', 'ملابس مولود باسم الطفل — توزيعات الاستقبال.': 'A onesie with the baby’s name — welcome giveaways.',
+  // الكوفيهات
+  'باقة الكوفيهات': 'Café package', 'كل اللي يحتاجه الكوفي بشعاره': 'Everything a café needs, with its logo',
+  'ميداليات أكواب بشعارك تهديها لزبائنك المميزين، ستاند QR للمنيو على كل طاولة، ومساند أكواب باسم الكوفي — صمّمها هنا واطلبها دفعة وحدة.': 'Cup keychains with your logo for loyal customers, a QR menu stand on every table, and coasters with your café name — design them here and order in one go.',
+  'كوّن باقتك': 'Build your package', 'عدد القطع': 'Pieces', 'خصم الجملة': 'Bulk discount', 'الإجمالي التقريبي': 'Estimated total', 'اسم الكوفي': 'Café name', 'رقم التواصل': 'Contact number',
+  '💬 اطلب الباقة واتساب': '💬 Order package on WhatsApp', 'الأسعار تقديرية للقطع القياسية وتتأكد بعد مراجعة الشعار.': 'Prices are estimates for standard pieces and are confirmed after reviewing your logo.',
+  'ليش الكوفيهات تحبها؟': 'Why cafés love it', '🎁 هدية يحتفظ فيها الزبون — إعلان دائم في جيبه.': '🎁 A gift customers keep — a lasting ad in their pocket.',
+  '📱 ستاند QR يخلّي الزبون يفتح المنيو أو الانستقرام مباشرة.': '📱 A QR stand lets customers open your menu or Instagram instantly.', '🎨 بألوان هويتك وشعارك بالضبط.': '🎨 In your exact brand colors and logo.',
+  '📦 أسعار جملة تنزل كل ما زادت الكمية.': '📦 Bulk prices drop as quantity grows.', '🥤 صمّم الكوب 3D': '🥤 Design the 3D cup', '🏷️ صمّم ميدالية بالشعار': '🏷️ Design a logo keychain',
+  'القطعة': 'Item', 'سعر الحبة': 'Unit price', 'الكمية': 'Quantity', 'صمّم': 'Design', 'ميدالية كوب 3D بالألوان': '3D color cup keychain', 'ميدالية مسطحة بالشعار': 'Flat logo keychain', 'ستاند QR للطاولة': 'QR table stand',
+  // الطلب
+  'تصميمك': 'Your design', 'معاينة التصميم': 'Design preview', '✏️ عدّل التصميم': '✏️ Edit design', '🖼️ استخدم تصميم الصورة': '🖼️ Use the photo design', 'تفاصيل الطلب': 'Order details',
+  'الاستلام': 'Delivery', 'استلام من المحل': 'Pick up', 'توصيل': 'Delivery', 'الاسم': 'Name', 'رقم الجوال': 'Mobile number', 'ملاحظات (العنوان، الألوان، موعد التسليم…)': 'Notes (address, colors, deadline…)',
+  'الخصم': 'Discount', '💬 أرسل الطلب واتساب': '💬 Send order on WhatsApp', '📋 نسخ التفاصيل': '📋 Copy details', '⬇ تحميل الملفات': '⬇ Download files',
+  'السعر تقديري ويتأكد بعد مراجعة التصميم. على الجوال يرسل الطلب مع صورة التصميم مباشرة.': 'The price is an estimate and is confirmed after reviewing the design. On mobile the order is sent with the design image.',
+  'النوع': 'Type', 'السطر الثاني': 'Second line', 'الشعار': 'Logo', 'الوجه الخلفي': 'Back side', 'المقاس': 'Size', 'الخلف': 'Back', 'نعم': 'Yes', 'لا': 'No', '(الشعار)': '(logo)', 'صمّم ميدالية أولاً.': 'Design a keychain first.',
+  '🥤 كوب 3D': '🥤 3D cup', 'شعار': 'Logo', 'الوزن': 'Weight',
+  // من نحن
+  'آراء زبائننا': 'Customer reviews',
+  // الدليل
+  'دليل الطباعة السريع': 'Quick print guide', '☕ الميداليات': '☕ Keychains', '🎨 3MF الملوّن': '🎨 Color 3MF', '🪧 ستاند الطاولة': '🪧 Table stand', '💡 الليثوفين': '💡 Lithophanes', '🍪 قوالب الكوكيز': '🍪 Cookie cutters', '🥤 كوب 3D': '🥤 3D cup',
+  'يُطبع واقف على قاعدته — الحواف مشطوفة 45° فما يحتاج دعامات.': 'Prints standing on its base — 45° chamfers, so no supports needed.',
+  'افتح ملف 3MF في Bambu Studio / Orca: كل قطعة (غطاء، كوب، كم، نقش، حلقة) تطلع بلونها.': 'Open the 3MF in Bambu Studio / Orca: each part (lid, cup, sleeve, emboss, loop) keeps its color.',
+  'ارتفاع طبقة 0.12 مم للنقش، وجدران 3 خطوط، وتعبئة 15٪.': '0.12 mm layers for the emboss, 3 walls, 15% infill.', 'اربط الحلقة الذهبية المعدنية في حلقة التعليق بعد الطباعة.': 'Attach a metal key ring to the hanging loop after printing.',
+  'ارتفاع الطبقة 0.12–0.16 مم للنصوص الصغيرة.': '0.12–0.16 mm layer height for small text.', 'تعبئة 20–30٪، وجدران 3 خطوط لقوة الحلقة.': '20–30% infill and 3 walls for a strong ring.',
+  'اطبعها مسطحة على ظهرها — بدون دعامات.': 'Print flat on its back — no supports.', 'إذا ظهر تنبيه «خطوط أرق من الفوهة» كبّر المقاس أو اختر خط Lalezar.': 'If you see a “thinner than nozzle” warning, enlarge it or use the Lalezar font.',
+  'افتحه في Bambu Studio أو Orca أو PrusaSlicer — كل ميدالية تطلع قطعة وحدة بجزأين.': 'Open it in Bambu Studio, Orca or PrusaSlicer — each keychain loads as one object with two parts.',
+  'اختر لون كل جزء من قائمة الفلامنت.': 'Pick a filament for each part.', 'بدون طابعة ملونة: أضف Pause / تغيير فلامنت عند الارتفاع المذكور في الإحصائيات.': 'No multi-color printer? Add a pause / filament change at the height shown in the stats.',
+  'النص الخلفي يطبع في أول طبقتين ملاصق للبلاطة.': 'Back text prints in the first two layers against the bed.', 'مع AMS: يتلوّن تلقائياً من ملف 3MF.': 'With AMS: colors are applied automatically from the 3MF.',
+  'بدون AMS: غيّر الفلامنت بعد الطبقات الأولى ثم ارجع للون القاعدة.': 'Without AMS: change filament after the first layers, then switch back to the base color.',
+  'الملف فيه قطعتين: اللوحة والقاعدة بشق.': 'The file contains two pieces: the sign and the slotted base.', 'اطبع اللوحة مسطحة والقاعدة كما هي، وركّب اللسان في الشق.': 'Print the sign flat and the base as is, then slide the tab into the slot.',
+  'إذا كان الشق ضيق اصنفره خفيف أو زد السماكة 0.2.': 'If the slot is tight, sand it lightly or add 0.2 to the thickness.', 'فلامنت أبيض PLA، تعبئة 100٪.': 'White PLA, 100% infill.',
+  'المسطح: اطبعه واقف لأفضل دقة. المنحني: يطبع واقف كما هو.': 'Flat: print it standing for best detail. Curved: prints standing as is.', 'ارتفاع طبقة 0.1–0.12 مم وسرعة منخفضة.': '0.1–0.12 mm layers at low speed.',
+  'PETG أو PLA مخصص للأغذية.': 'PETG or food-safe PLA.', 'اغسلها يدوياً بماء فاتر — لا تستخدم غسالة الصحون.': 'Hand wash in lukewarm water — no dishwasher.', 'الحافة العريضة تطبع للأسفل.': 'The wide flange prints face down.',
+  // إحصائيات وتنبيهات
+  'الوزن التقريبي': 'Approx. weight', 'وقت الطباعة': 'Print time', 'تكلفة الخامة': 'Material cost', 'سعر بيع مقترح': 'Suggested price', 'المثلثات': 'Triangles', 'تغيير اللون عند': 'Color change at',
+  'اكتب الاسم الرئيسي.': 'Type the main name.', 'اكتب نص الوجه الخلفي.': 'Type the back-side text.', 'ارفع صورة الشعار.': 'Upload the logo image.', 'اكتب النص اللي تبيه على الكم.': 'Type the text for the sleeve.',
+  'ارفع صورة الشعار من قسم «🖼️ شعار الكوفي».': 'Upload the logo in the “🖼️ Café logo” section.', 'ارفع صورة الشعار من القائمة الجانبية.': 'Upload the logo from the side panel.',
+  'القاعدة رقيقة على الحفر من الوجهين — زد سماكة القاعدة.': 'The base is too thin for engraving on both sides — increase the base thickness.',
+  'نص الوجه الخلفي رفيع جداً — كبّر المقاس أو اختصر النص.': 'The back text is too thin — enlarge the size or shorten the text.',
+  'النص طويل على كوب صغير — كبّر الكوب أو اختصر الكتابة حتى تكون مقروءة.': 'The text is long for a small cup — enlarge the cup or shorten the text so it stays readable.',
+  // رسائل
+  'تم تجهيز ملف STL ✓': 'STL file ready ✓', 'ملف 3MF بلونين جاهز ✓': 'Two-color 3MF ready ✓', '3MF ملوّن جاهز ✓': 'Color 3MF ready ✓', 'البلاطة جاهزة ✓': 'Plate ready ✓',
+  'تم حفظ التصميم في متصفحك ⭐': 'Design saved in your browser ⭐', 'تم النسخ ✓': 'Copied ✓', 'تعذر النسخ': 'Could not copy', 'اكتب اسماً واحداً على الأقل': 'Type at least one name',
+  'ارفع صورة أولاً': 'Upload a photo first', 'ارفع صورة واحدة على الأقل': 'Upload at least one photo', 'أدخل مفتاح Meshy API': 'Enter your Meshy API key', 'الحد الأقصى 4 صور': 'Maximum 4 photos',
+  'تم توليد المجسم ✓': 'Model generated ✓', 'صمّم شيئاً أولاً': 'Design something first', 'تم فتح التصميم المشترك ✓ — عدّل عليه براحتك': 'Shared design opened ✓ — feel free to edit it',
+  'تم نسخ رابط التصميم ✓ — أرسله لأي أحد يفتحه ويعدّل عليه': 'Design link copied ✓ — send it to anyone to open and edit',
+  'تم التحميل — شاركها من الاستوديو': 'Downloaded — share it from your gallery', '✕ إلغاء': '✕ Cancel', 'جارٍ الرفع': 'Uploading', 'جارٍ البناء': 'Building', 'في الانتظار': 'Queued', 'اكتمل': 'Done',
+  // AR والستوري
+  'جارٍ التجهيز…': 'Preparing…', '📱 افتح الكاميرا وشوفه قدامك': '📱 Open the camera and see it in front of you',
+  'اضغط الزر، وحرّك الجوال ببطء على الطاولة حتى يظهر المجسم بحجمه الحقيقي.': 'Tap the button and slowly move your phone over a table until the model appears at real size.',
+  'جهازك أو متصفحك ما يدعم AR — جرّب Safari على الآيفون أو Chrome على أندرويد. تقدر تدوّر المجسم بإصبعك هنا.': 'Your device or browser doesn’t support AR — try Safari on iPhone or Chrome on Android. You can still rotate the model here.',
+  'امسح الكود بجوالك لتفتح نفس التصميم وتشوفه بالواقع المعزز:': 'Scan the code with your phone to open this design and view it in AR:',
+  '🖼️ صورة جاهزة للستوري والبوست': '🖼️ Image ready for stories & posts', 'ستوري 9:16': 'Story 9:16', 'بوست 4:5': 'Post 4:5', 'كريمي': 'Cream', 'قهوة': 'Coffee', 'ذهبي': 'Gold', 'أبيض': 'White',
+  '📤 شارك': '📤 Share', '📲 ثبّت التطبيق على جوالك': '📲 Install the app on your phone', '⬇ تحميل': '⬇ Download', 'معاينة': 'Preview',
+};
+const PATTERNS = [
+  [/^📱 شوفه في مكانك — بالحجم الحقيقي$/, '📱 See it in your space — real size'],
+  [/^من نحن — (.+)$/, (_, b) => 'About — ' + (D[b] || b)],
+  [/^تم تجهيز (\d+) ميدالية ✓$/, '$1 keychains ready ✓'],
+  [/^تم تحويل (\d+) صورة ✓$/, '$1 photos converted ✓'],
+  [/^جارٍ (\d+)\/(\d+)…$/, 'Working $1/$2…'],
+  [/^(\d+) قطعة على (\d+) بلاطة \((.+)\)\. أول بلاطة ظاهرة في المعاينة\.$/, '$1 pieces on $2 plate(s) ($3). The first plate is shown in the preview.'],
+  [/^⚠️ /, '⚠️ ', true],
+  [/^مربعات الـ QR صغيرة \((.+) مم\) — .+$/, 'QR modules are small ($1 mm) — enlarge the width or shorten the link so it scans after printing.'],
+  [/^مربعات QR في الخلف صغيرة \((.+) مم\) — .+$/, 'Back QR modules are small ($1 mm) — enlarge the size or shorten the link.'],
+  [/^حوالي (\d+)٪ من خطوط النص\/الزخرفة أرق من فوهة (.+) مم .+$/, 'About $1% of the text/decoration lines are thinner than the $2 mm nozzle and may not print — enlarge or use a bolder font (e.g. Lalezar).'],
+  [/^تعذر (.+?): (.*)$/, 'Error: $2'],
+  [/^خطأ: (.*)$/, 'Error: $1'],
+  [/^(.+) من صورة$/, '$1 from photo'],
+];
+const UNITS = [[/ مم/g, ' mm'], [/(\d) غ(?=$|\s)/g, '$1 g'], [/^~(.+) د$/, '~$1 min'], [/^~(.+) س$/, '~$1 h'], [/ر\.ق/g, 'QAR'], [/٪/g, '%'], [/ و /g, ' and ']];
+
+const AR = /[؀-ۿ]/;
+export function tr(s) {
+  const t = s.trim(); if (!t || !AR.test(t)) return null;
+  if (D[t]) return s.replace(t, D[t]);
+  for (const [re, rep, prefix] of PATTERNS) {
+    if (prefix) { if (re.test(t)) { const rest = tr(t.replace(re, '')); return rest ? s.replace(t, rep + rest.trim()) : null; } continue; }
+    if (re.test(t)) return s.replace(t, t.replace(re, rep));
+  }
+  const pm = t.match(/^([^\u0600-\u06FF]+?)\s*([\u0600-\u06FF].*)$/);
+  if (pm && D[pm[2]]) return s.replace(t, `${pm[1]} ${D[pm[2]]}`.replace(/\s+/g, ' '));
+  let u = t; for (const [re, rep] of UNITS) u = u.replace(re, rep);
+  if (u !== t && !AR.test(u)) return s.replace(t, u);
+  return null;
+}
+
+const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+let lang = 'ar', obs = null;
+function walk(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let n = root;
+  do {
+    if (n.nodeType === 3) {
+      const p = n.parentElement;
+      if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.tagName) || p.closest('[data-noi18n]')) continue;
+      const x = tr(n.nodeValue); if (x) { n.__ar ??= n.nodeValue; n.nodeValue = x; }
+    } else if (n.nodeType === 1) {
+      for (const a of ATTRS) { const v = n.getAttribute?.(a); if (v) { const x = tr(v); if (x) { (n.__ara ||= {})[a] ??= v; n.setAttribute(a, x); } } }
+    }
+  } while ((n = w.nextNode()));
+}
+export function setLang(l) {
+  lang = l;
+  document.documentElement.lang = l; document.documentElement.dir = l === 'en' ? 'ltr' : 'rtl';
+  try { localStorage.setItem('lang', JSON.stringify(l)); } catch {}
+  if (l === 'en') {
+    walk(document.body); document.title = 'Tab3a 3D';
+    if (!obs) {
+      obs = new MutationObserver((ms) => {
+        if (lang !== 'en') return;
+        for (const m of ms) {
+          if (m.type === 'characterData') { const p = m.target.parentElement; if (p && !/^(TEXTAREA|SCRIPT|STYLE)$/.test(p.tagName)) { const x = tr(m.target.nodeValue); if (x) m.target.nodeValue = x; } }
+          else m.addedNodes.forEach((n) => (n.nodeType === 3 ? (() => { const x = tr(n.nodeValue); if (x) n.nodeValue = x; })() : n.nodeType === 1 && walk(n)));
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+  }
+}
+export const getLang = () => lang;

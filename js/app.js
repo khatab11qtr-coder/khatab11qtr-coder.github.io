@@ -5,6 +5,8 @@ import { TEMPLATES, rasterize, buildSolids, makeStencil } from './keychain.js';
 import { lithophane, relief, faceRelief, cookieCutter, removeBackground } from './photo.js';
 import { export3MF, arrange, bedOutline, BEDS } from './export.js';
 import { buildCup } from './cup3d.js';
+import { setLang } from './i18n.js';
+import { modal, openAR, storyImage, STORY_STYLES, designURL, shareLink, parseHash } from './extras.js';
 import * as AI from './ai.js';
 
 /* ================= أدوات عامة ================= */
@@ -82,6 +84,7 @@ function go(id, push = true) {
   if (id === 'cup3d') C3.ensure();
   if (id === 'order') O.render();
   if (id === 'gallery') G.load();
+  if (id === 'occasions') G.load('gallery/occasions.json', '#occGrid');
 }
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-go]');
@@ -132,7 +135,7 @@ const K = {
     set('#kText1', P.text1); set('#kText2', P.text2); set('#kQR', P.qr); set('#kFont', P.font); set('#kMode', P.textMode);
     set('#kSize', P.size); set('#kBase', P.baseH); set('#kRaise', P.raiseH); set('#kHole', P.hole); set('#kRes', P.res);
     set('#kBorder', P.border); set('#kDecor', P.decor); set('#kC1', P.c1); set('#kC2', P.c2);
-    set('#kBack', P.back); set('#kBackText', P.backText); set('#kNozzle', P.nozzle);
+    set('#kBack', P.back); set('#kBackText', P.backText); set('#kNozzle', P.nozzle); set('#kLogoPlace', P.logoPlace);
     $('#kSizeO').textContent = $('#kSize').value; this.syncBody();
   },
   syncBody() {
@@ -675,20 +678,137 @@ $('#oSend').onclick = async () => {
 };
 
 /* ================= المعرض ================= */
+/* ================= معرض + مناسبات ================= */
+function cardGrid(list, gridSel, base) {
+  $(gridSel).innerHTML = list.map((g, i) => `<article class="gcard"><img src="${base}${g.img}" alt="${escapeHTML(g.title)}" loading="lazy"><div><h3>${escapeHTML(g.title)}</h3><p>${escapeHTML(g.desc || '')}</p>${g.preset ? `<button class="btn small" data-preset="${i}">✏️ صمّم مثلها</button>` : g.go ? `<button class="btn small" data-go="${g.go}">✏️ صمّم مثلها</button>` : ''}</div></article>`).join('');
+  $(gridSel).onclick = (e) => {
+    const b = e.target.closest('[data-preset]'); if (!b) return;
+    const pre = list[+b.dataset.preset].preset;
+    if (pre.page === 'cup3d') { C3.write(pre); go('cup3d'); C3.update(); return; }
+    K.ensure(); const def = K.read(); K.write({ ...def, back: 'none', logoPlace: 'none', ...pre }); go('keychain'); K.update();
+  };
+}
 const G = {
-  loaded: false,
-  async load() {
-    if (this.loaded) return; this.loaded = true;
-    try {
-      const list = await (await fetch('gallery/gallery.json')).json();
-      $('#galleryGrid').innerHTML = list.map((g, i) => `<article class="gcard"><img src="gallery/${g.img}" alt="${escapeHTML(g.title)}" loading="lazy"><div><h3>${escapeHTML(g.title)}</h3><p>${escapeHTML(g.desc || '')}</p>${g.preset ? `<button class="btn small" data-preset="${i}">✏️ صمّم مثلها</button>` : g.go ? `<button class="btn small" data-go="${g.go}">✏️ صمّم مثلها</button>` : ''}</div></article>`).join('');
-      $('#galleryGrid').onclick = (e) => {
-        const b = e.target.closest('[data-preset]'); if (!b) return;
-        const def = K.read(); K.write({ ...def, ...list[+b.dataset.preset].preset }); go('keychain'); K.update();
-      };
-    } catch { $('#galleryGrid').innerHTML = '<p class="hint">لا توجد صور بعد.</p>'; }
+  done: {},
+  async load(file = 'gallery/gallery.json', grid = '#galleryGrid') {
+    if (this.done[file]) return; this.done[file] = true;
+    try { cardGrid(await (await fetch(file)).json(), grid, 'gallery/'); }
+    catch { $(grid).innerHTML = '<p class="hint">لا توجد صور بعد.</p>'; }
   },
 };
+
+/* ================= كوب 3D: كتابة الإعدادات ================= */
+C3.write = function (P) {
+  const set = (id, v) => { const e = $(id); if (e && v != null) e.type === 'checkbox' ? (e.checked = v) : (e.value = v); };
+  set('#cHeight', P.height); set('#cContent', P.content); set('#cText1', P.text1); set('#cText2', P.text2); set('#cFont', P.font);
+  set('#cBack', P.backContent); set('#cBackText', P.backText); set('#cSleeveOn', P.sleeve); set('#cLoopOn', P.loop); set('#cHole', P.hole);
+  if (P.colors) CK.forEach((k) => set(cId(k), P.colors[k]));
+  $('#cHeightO').textContent = $('#cHeight').value; this.sync();
+};
+
+/* ================= AR + ستوري + مشاركة ================= */
+const KEEP_K = ['template', 'text1', 'text2', 'qr', 'font', 'textMode', 'size', 'baseH', 'raiseH', 'hole', 'res', 'border', 'decor', 'c1', 'c2', 'back', 'backText', 'nozzle'];
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
+const kDesign = () => pick(K.read(), KEEP_K);
+const cDesign = () => { const P = C3.read(); delete P.logoStencil; return P; };
+const site = () => location.host || 'kkhatab.me';
+
+async function openStory({ view, title, sub, qrUrl, font }) {
+  const snap = view.snapshot(1400, 1400);
+  const st = { format: 'story', style: 0 };
+  const m = modal(`<h3>🖼️ صورة جاهزة للستوري والبوست</h3>
+    <div class="seg inline" data-k="format"><button data-v="story" class="active">ستوري 9:16</button><button data-v="post">بوست 4:5</button></div>
+    <div class="seg inline" data-k="style">${STORY_STYLES.map((s, i) => `<button data-v="${i}" class="${i ? '' : 'active'}">${s.name}</button>`).join('')}</div>
+    <img class="story-prev" alt="معاينة">
+    <div class="actions" style="margin-top:12px"><button class="btn primary" data-act="share">📤 شارك</button><button class="btn" data-act="dl">⬇ تحميل</button></div>`);
+  let blob;
+  const render = async () => {
+    blob = await storyImage({ snap, title, sub, brand: CONFIG.brand, site: site(), qrUrl, font, ...st });
+    const img = m.querySelector('.story-prev'); if (img.src) URL.revokeObjectURL(img.src); img.src = URL.createObjectURL(blob);
+  };
+  m.addEventListener('click', async (e) => {
+    const b = e.target.closest('.seg button');
+    if (b) { const k = b.parentElement.dataset.k; st[k] = k === 'style' ? +b.dataset.v : b.dataset.v; b.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b)); render(); return; }
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'dl') download(blob, `design_${st.format}.png`);
+    if (act === 'share') {
+      const f = new File([blob], 'design.png', { type: 'image/png' });
+      if (navigator.canShare?.({ files: [f] })) { try { await navigator.share({ files: [f], text: `${title} — ${site()}` }); } catch {} }
+      else { download(blob, `design_${st.format}.png`); toast('تم التحميل — شاركها من الاستوديو'); }
+    }
+  });
+  try { await document.fonts.load('900 60px "Cairo"'); } catch {}
+  render();
+}
+async function doShare(page, design, title) {
+  const r = await shareLink(designURL(page, design), title);
+  if (r === 'copied') toast('تم نسخ رابط التصميم ✓ — أرسله لأي أحد يفتحه ويعدّل عليه');
+  else if (r === 'fail') toast('تعذر النسخ');
+}
+$('#kAR').onclick = () => { if (K.S) openAR(K.parts(K.S), { title: K.P.text1, qrUrl: designURL('keychain', kDesign()) }); };
+$('#cAR').onclick = () => { if (C3.parts) openAR(C3.parts, { title: C3.P.text1, qrUrl: designURL('cup3d', cDesign()) }); };
+$('#kStory').onclick = () => { if (K.S) openStory({ view: K.view, title: K.P.text1 || TEMPLATES[K.P.template].label, sub: K.P.text2, qrUrl: designURL('keychain', kDesign()), font: K.P.font }); };
+$('#cStory').onclick = () => {
+  if (!C3.parts) return;
+  const t = ['text', 'beans_text'].includes(C3.P.content) && C3.P.text1 ? C3.P.text1 : 'ميدالية كوب 3D';
+  openStory({ view: C3.view, title: t, sub: 'بألوانك وشعارك', qrUrl: designURL('cup3d', cDesign()), font: C3.P.font });
+};
+$('#kShare').onclick = () => doShare('keychain', kDesign(), K.P?.text1);
+$('#cShare').onclick = () => doShare('cup3d', cDesign(), C3.P?.text1);
+if (K.logo === null) { /* الشعار لا يُنقل بالرابط */ }
+
+/* ================= باقة الكوفيهات ================= */
+const PKG = {
+  render() {
+    $('#pkgTable').innerHTML = '<tr><th>القطعة</th><th>سعر الحبة</th><th>الكمية</th><th></th></tr>' + CONFIG.cafePackage.map((it, i) =>
+      `<tr><td>${it.icon} ${it.label}</td><td>${fmt(it.price)} ${CONFIG.currency}</td><td><input type="number" min="0" max="5000" value="${it.qty}" data-i="${i}"></td><td><button class="btn small" data-go="${it.go}">صمّم</button></td></tr>`).join('');
+    this.calc();
+  },
+  calc() {
+    const q = $$('#pkgTable input').map((x) => Math.max(0, +x.value || 0));
+    const n = q.reduce((a, b) => a + b, 0);
+    const sum = q.reduce((a, b, i) => a + b * CONFIG.cafePackage[i].price, 0);
+    const t = O.tier(n), total = Math.ceil(sum * (1 - t.off / 100));
+    $('#pkgCount').textContent = fmt(n, 0); $('#pkgDisc').textContent = t.off ? t.off + '٪' : '—';
+    $('#pkgTotal').textContent = `${fmt(total, 0)} ${CONFIG.currency}`;
+    return { q, n, t, total };
+  },
+};
+PKG.render();
+$('#pkgTable').addEventListener('input', () => PKG.calc());
+['pkgName', 'pkgPhone'].forEach((id) => { $('#' + id).value = store.get(id, ''); $('#' + id).addEventListener('change', (e) => store.set(id, e.target.value)); });
+$('#pkgSend').onclick = () => {
+  const c = PKG.calc();
+  const lines = CONFIG.cafePackage.map((it, i) => c.q[i] ? `• ${it.label}: ${c.q[i]}` : '').filter(Boolean);
+  const text = [`مرحباً، أبي أطلب باقة الكوفيهات`, `• الكوفي: ${$('#pkgName').value || '—'}`, ...lines,
+    `• المجموع: ${c.n} قطعة — تقريباً ${fmt(c.total, 0)} ${CONFIG.currency}${c.t.off ? ` (خصم ${c.t.off}٪)` : ''}`, `• للتواصل: ${$('#pkgPhone').value || '—'}`, 'سأرسل الشعار هنا 👇'].join('\n');
+  window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
+};
+
+/* ================= من نحن ================= */
+(async function about() {
+  const A2 = CONFIG.about || {};
+  $('#aboutTitle').textContent = `من نحن — ${CONFIG.brand}`;
+  $('#aboutText').textContent = (store.get('lang', 'ar') === 'en' && A2.textEn) || A2.text || '';
+  const items = [];
+  if (A2.instagram) items.push(`<li><a href="https://instagram.com/${encodeURIComponent(A2.instagram)}" target="_blank" rel="noopener">📸 @${escapeHTML(A2.instagram)}</a></li>`);
+  if (CONFIG.whatsapp) items.push(`<li><a href="https://wa.me/${CONFIG.whatsapp}" target="_blank" rel="noopener">💬 واتساب</a></li>`);
+  if (A2.email) items.push(`<li><a href="mailto:${escapeHTML(A2.email)}">✉️ ${escapeHTML(A2.email)}</a></li>`);
+  if (A2.location) items.push(`<li><span>📍 ${escapeHTML(A2.location)}</span></li>`);
+  if (A2.hours) items.push(`<li><span>🕒 ${escapeHTML(A2.hours)}</span></li>`);
+  $('#aboutContact').innerHTML = items.join('');
+  try {
+    const rv = await (await fetch('gallery/reviews.json')).json();
+    if (rv.length) {
+      $('#reviewsBox').hidden = false;
+      $('#reviews').innerHTML = rv.map((r) => `<div class="review"><span class="stars">${'★'.repeat(Math.max(1, Math.min(5, r.stars || 5)))}</span><b>${escapeHTML(r.name || '')}</b><p>${escapeHTML(r.text || '')}</p></div>`).join('');
+    }
+  } catch {}
+})();
+
+/* ================= الهوية ================= */
+if (CONFIG.logo) { const l = $('#brandLogo'); l.src = CONFIG.logo; l.hidden = false; $('.brand svg').style.display = 'none'; }
+if (CONFIG.accent) document.documentElement.style.setProperty('--accent', CONFIG.accent);
 
 /* ================= الذكاء الاصطناعي ================= */
 const A = { view: null, imgs: [], glb: null, tris: null, abort: null };
@@ -779,5 +899,25 @@ $('#aGLBdl').onclick = () => { if (A.glb) download(new Blob([A.glb], { type: 'mo
 })();
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-go(location.hash.slice(1) || 'home', false);
+{
+  const { page, design } = parseHash();
+  if (design && page === 'keychain') { K.write({ ...K.read(), ...design }); }
+  if (design && page === 'cup3d') { C3.write(design); }
+  go(page, false);
+  if (design) toast('تم فتح التصميم المشترك ✓ — عدّل عليه براحتك');
+}
+// اللغة
+{
+  const L = store.get('lang', 'ar');
+  $('#langBtn').textContent = L === 'en' ? 'ع' : 'EN';
+  $('#langBtn').onclick = () => { store.set('lang', L === 'en' ? 'ar' : 'en'); location.reload(); };
+  if (L === 'en') setLang('en');
+}
+// تثبيت كتطبيق
+{
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; $('#installBtn').hidden = false; });
+  $('#installBtn').onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $('#installBtn').hidden = true; };
+}
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 setTimeout(() => window.scrollTo(0, 0), 60);

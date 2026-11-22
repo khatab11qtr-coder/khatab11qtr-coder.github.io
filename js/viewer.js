@@ -105,13 +105,14 @@ export class Viewer {
   }
   topView() { this.dirty = true; const r = this.camera.position.length(); this.camera.position.set(0, -0.001, r); this.controls.target.set(0, 0, 0); }
   /** لقطة بحجم ثابت (تعمل حتى لو العارض مخفي) */
-  snapshot(w = 900, h = 700) {
+  snapshot(w = 900, h = 700, front = true) {
     const r = this.renderer, old = r.getSize(new THREE.Vector2()), pr = r.getPixelRatio(), asp = this.camera.aspect;
     const gv = this.grid.visible; this.grid.visible = false;
+    const rz = this.spin.rotation.z; if (front) this.spin.rotation.z = 0;
     r.setPixelRatio(1); r.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
     r.render(this.scene, this.camera);
     const url = r.domElement.toDataURL('image/png');
-    this.grid.visible = gv;
+    this.grid.visible = gv; this.spin.rotation.z = rz;
     r.setPixelRatio(pr); r.setSize(old.x, old.y, false); this.camera.aspect = asp; this.camera.updateProjectionMatrix();
     this.dirty = true;
     return url;

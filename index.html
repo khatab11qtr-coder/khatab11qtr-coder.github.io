@@ -11,6 +11,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@500;700;800&family=Reem+Kufi:wght@600;700&family=Lalezar&family=Changa:wght@600;800&family=Lemonada:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <script type="importmap">
 { "imports": {
   "three": "./vendor/three/three.module.min.js",
@@ -24,18 +27,22 @@
 <header class="top">
   <a class="brand" href="#home" data-go="home">
     <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true"><path d="M32 4 58 18v28L32 60 6 46V18z" fill="var(--accent)"/><path d="M32 4 58 18 32 32 6 18z" fill="var(--accent-2)"/><path d="M32 32v28L6 46V18z" fill="var(--accent-3)"/></svg>
-    <span id="brandName">طبعة 3D</span>
+    <img id="brandLogo" alt="" hidden><span id="brandName">طبعة 3D</span>
   </a>
   <nav class="tabs" role="tablist">
     <button data-go="home" class="active">الرئيسية</button>
     <button data-go="keychain">صمّم ميدالية</button>
     <button data-go="cup3d">☕ كوب 3D</button>
+    <button data-go="occasions">🎉 مناسبات</button>
     <button data-go="photo">صورة ← مجسم</button>
     <button data-go="ai">مجسم كامل AI</button>
+    <button data-go="cafe">☕ للكوفيهات</button>
     <button data-go="gallery">أعمالنا</button>
     <button data-go="order">🛒 اطلب</button>
+    <button data-go="about">من نحن</button>
     <button data-go="guide">دليل الطباعة</button>
   </nav>
+  <button class="icon-btn" id="langBtn" title="English / عربي" aria-label="Language">EN</button>
   <button class="icon-btn" id="themeBtn" title="تبديل الوضع الليلي" aria-label="تبديل الوضع"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
 </header>
 
@@ -79,6 +86,8 @@
       <div class="tpl-grid" data-group="general"></div>
       <label class="lbl">للكوفي والبيت</label>
       <div class="tpl-grid" data-group="home"></div>
+      <label class="lbl">مناسبات</label>
+      <div class="tpl-grid" data-group="occasion"></div>
 
       <div class="field"><label for="kText1">الاسم الرئيسي</label><input id="kText1" value="Bean House" maxlength="40"></div>
       <div class="field"><label for="kText2">سطر ثانٍ (اختياري)</label><input id="kText2" value="SPECIALTY COFFEE" maxlength="40"></div>
@@ -172,6 +181,9 @@
         <button class="btn" id="k2C">ملفين STL للونين</button>
         <button class="btn" id="kPNG">📷 صورة</button>
         <button class="btn" id="kSave">⭐ حفظ</button>
+        <button class="btn" id="kAR">📱 AR</button>
+        <button class="btn" id="kStory">🖼️ صورة ستوري</button>
+        <button class="btn" id="kShare">🔗 شارك</button>
         <button class="btn wa" id="kOrder">🛒 اطلبها طباعة</button>
       </div>
       <div class="saved" id="kSaved"></div>
@@ -236,6 +248,9 @@
         <button class="btn" id="cSTL">⬇ STL</button>
         <button class="btn" id="cZip">ملف لكل لون ZIP</button>
         <button class="btn" id="cPNG">📷 صورة</button>
+        <button class="btn" id="cAR">📱 شوفه في مكانك AR</button>
+        <button class="btn" id="cStory">🖼️ صورة ستوري</button>
+        <button class="btn" id="cShare">🔗 شارك</button>
         <button class="btn wa" id="cOrder">🛒 اطلبها طباعة</button>
       </div>
       <p class="hint">يُطبع واقفاً بدون دعامات (الحواف مشطوفة 45°). الألوان المتعددة تحتاج طابعة ملونة (AMS/MMU) — أو اطبعه بلون واحد ولوّنه.</p>
@@ -410,6 +425,72 @@
   </div>
 </section>
 
+<!-- ===================== مناسبات ===================== -->
+<section id="occasions" class="page">
+  <div class="guide">
+    <h2>🎉 ميداليات وتوزيعات المناسبات</h2>
+    <p class="hint">رمضان، العيد، اليوم الوطني، التخرّج، الزواج، والمواليد — اختر قالب، اكتب الاسم، وحط قائمة الأسماء للتوزيعات وتطلع بلاطة كاملة جاهزة.</p>
+    <div class="gallery" id="occGrid"></div>
+  </div>
+</section>
+
+<!-- ===================== للكوفيهات ===================== -->
+<section id="cafe" class="page">
+  <div class="cafe-hero card">
+    <div>
+      <span class="pill">باقة الكوفيهات</span>
+      <h2>كل اللي يحتاجه الكوفي بشعاره</h2>
+      <p class="hint">ميداليات أكواب بشعارك تهديها لزبائنك المميزين، ستاند QR للمنيو على كل طاولة، ومساند أكواب باسم الكوفي — صمّمها هنا واطلبها دفعة وحدة.</p>
+    </div>
+  </div>
+  <div class="order">
+    <div class="card">
+      <h2>كوّن باقتك</h2>
+      <table class="tiers pkg" id="pkgTable"></table>
+      <div class="price">
+        <div><small>عدد القطع</small><b id="pkgCount">0</b></div>
+        <div><small>خصم الجملة</small><b id="pkgDisc">—</b></div>
+        <div class="total"><small>الإجمالي التقريبي</small><b id="pkgTotal">—</b></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="pkgName">اسم الكوفي</label><input id="pkgName"></div>
+        <div class="field"><label for="pkgPhone">رقم التواصل</label><input id="pkgPhone" type="tel" dir="ltr"></div>
+      </div>
+      <div class="actions"><button class="btn wa" id="pkgSend">💬 اطلب الباقة واتساب</button></div>
+      <p class="hint">الأسعار تقديرية للقطع القياسية وتتأكد بعد مراجعة الشعار.</p>
+    </div>
+    <div class="card">
+      <h2>ليش الكوفيهات تحبها؟</h2>
+      <ul class="why">
+        <li>🎁 هدية يحتفظ فيها الزبون — إعلان دائم في جيبه.</li>
+        <li>📱 ستاند QR يخلّي الزبون يفتح المنيو أو الانستقرام مباشرة.</li>
+        <li>🎨 بألوان هويتك وشعارك بالضبط.</li>
+        <li>📦 أسعار جملة تنزل كل ما زادت الكمية.</li>
+      </ul>
+      <div class="actions">
+        <button class="btn small" data-go="cup3d">🥤 صمّم الكوب 3D</button>
+        <button class="btn small" data-go="keychain">🏷️ صمّم ميدالية بالشعار</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== من نحن ===================== -->
+<section id="about" class="page">
+  <div class="guide about">
+    <div class="card about-card">
+      <h2 id="aboutTitle">من نحن</h2>
+      <p id="aboutText"></p>
+      <ul class="contact" id="aboutContact"></ul>
+    </div>
+    <div id="aboutPhotos" class="gallery"></div>
+    <div id="reviewsBox" hidden>
+      <h2>آراء زبائننا</h2>
+      <div class="reviews" id="reviews"></div>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== الدليل ===================== -->
 <section id="guide" class="page">
   <div class="guide">
@@ -451,6 +532,8 @@
 </main>
 
 <footer class="foot">
+  <nav class="foot-links"><a href="#about" data-go="about">من نحن</a> · <a href="#guide" data-go="guide">دليل الطباعة</a> · <a href="#ai" data-go="ai">مجسم AI</a> · <a href="#order" data-go="order">اطلب</a></nav>
+  <button class="btn small" id="installBtn" hidden>📲 ثبّت التطبيق على جوالك</button>
   <span>© <span id="year"></span> <span class="bn">طبعة 3D</span> — كل المعالجة داخل متصفحك.</span>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -41,6 +41,11 @@ function heartPath(p, cx, top, s) {
   p.closePath();
 }
 const circle = (p, x, y, r) => { p.moveTo(x + r, y); p.arc(x, y, r, 0, Math.PI * 2); p.closePath(); };
+function star(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill();
+}
 
 /** يرسم QR داخل مربع ويرجع حجم المربع الصغير بالمم */
 export function drawQR(ctx, text, x, y, size) {
@@ -420,6 +425,170 @@ export const TEMPLATES = {
       };
     },
   },
+  crescent: {
+    label: 'هلال رمضان', icon: '🌙', sizeLabel: 'العرض', group: 'occasion', def: 55,
+    build(P) {
+      const W = P.size, R = W * 0.32, cx = W * 0.48, cy = W * 0.36;
+      const py = cy + R * 0.55, ph = W * 0.34;
+      const tab = [cx - 0.72 * R, cy - 0.72 * R];
+      const base = new Path2D();
+      circle(base, cx, cy, R);
+      roundRect(base, W * 0.06, py, W * 0.88, ph, W * 0.08);
+      circle(base, tab[0], tab[1], W * 0.085);
+      const plaque = new Path2D(); roundRect(plaque, W * 0.06, py, W * 0.88, ph, W * 0.08);
+      return {
+        W, H: py + ph + 1, base, hole: tab, holeR: W * 0.045,
+        logoBox: [W * 0.7, py + ph * 0.1, W * 0.18, ph * 0.3],
+        backBox: { cx: W / 2, cy: py + ph / 2, w: W * 0.7, h: ph * 0.5 },
+        extraBase(ctx) {
+          ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath(); ctx.arc(cx + R * 0.4, cy - R * 0.2, R * 0.8, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          ctx.fill(plaque);
+          ctx.beginPath(); ctx.arc(tab[0], tab[1], W * 0.085, 0, Math.PI * 2); ctx.fill();
+        },
+        raised(ctx) { if (P.decor) star(ctx, cx - R * 0.72, cy + R * 0.18, R * 0.16); },
+        text(ctx, Hh) {
+          Hh.name(W / 2, py + ph * 0.4, W * 0.74, ph * 0.46);
+          Hh.sub(W / 2, py + ph * 0.8, W * 0.6, ph * 0.18);
+        },
+      };
+    },
+  },
+  lantern: {
+    label: 'فانوس', icon: '🏮', sizeLabel: 'الارتفاع', group: 'occasion', def: 60,
+    build(P) {
+      const u = P.size / 60, s = (v) => v * u, W = s(36), H = s(60);
+      const base = new Path2D();
+      circle(base, s(18), s(5), s(4.5));
+      base.rect(s(16), s(8.5), s(4), s(3));
+      base.moveTo(s(10), s(16)); base.lineTo(s(26), s(16)); base.lineTo(s(18), s(9)); base.closePath();
+      roundRect(base, s(7), s(15), s(22), s(3), s(1));
+      base.moveTo(s(8), s(18)); base.lineTo(s(28), s(18)); base.lineTo(s(31), s(30)); base.lineTo(s(28), s(46)); base.lineTo(s(8), s(46)); base.lineTo(s(5), s(30)); base.closePath();
+      roundRect(base, s(7), s(45.5), s(22), s(3), s(1));
+      base.moveTo(s(12), s(48.5)); base.lineTo(s(24), s(48.5)); base.lineTo(s(18), s(55.5)); base.closePath();
+      circle(base, s(18), s(56.5), s(2));
+      return {
+        W, H, base, hole: [s(18), s(5)], holeR: s(2.6),
+        logoBox: [s(13), s(37), s(10), s(6)],
+        backBox: { cx: s(18), cy: s(31), w: s(16), h: s(14) },
+        raised(ctx, lw) {
+          ctx.lineWidth = lw;
+          ctx.beginPath(); roundRect(ctx, s(10), s(21), s(16), s(22), s(2)); ctx.stroke();
+          if (P.decor) { ctx.beginPath(); ctx.moveTo(s(10), s(21)); ctx.quadraticCurveTo(s(18), s(16.5), s(26), s(21)); ctx.stroke(); }
+        },
+        text(ctx, Hh) {
+          Hh.name(s(18), s(28.5), s(14.5), s(7));
+          if (!Hh.decorLogo) Hh.sub(s(18), s(37.5), s(13), s(4));
+        },
+      };
+    },
+  },
+  qatar: {
+    label: 'علم قطر', icon: '🇶🇦', sizeLabel: 'العرض', group: 'occasion', def: 60,
+    build(P) {
+      const W = P.size, H = W * 0.5, x0 = W * 0.26, dp = W * 0.08;
+      const base = new Path2D(); roundRect(base, 0, 0, W, H, W * 0.05);
+      return {
+        W, H, base, hole: [W * 0.1, H / 2], holeR: Math.min(P.hole / 2, H * 0.14),
+        logoBox: [W * 0.78, H * 0.08, W * 0.16, H * 0.26],
+        backBox: { cx: W / 2, cy: H / 2, w: W * 0.7, h: H * 0.5 },
+        raised(ctx) {
+          // الشريط الأبيض بتسعة رؤوس مسننة
+          ctx.beginPath(); ctx.moveTo(-1, -1); ctx.lineTo(x0, -1);
+          for (let i = 0; i < 9; i++) { ctx.lineTo(x0 + dp, ((i + 0.5) * H) / 9); ctx.lineTo(x0, ((i + 1) * H) / 9); }
+          ctx.lineTo(-1, H + 1); ctx.closePath(); ctx.fill();
+        },
+        text(ctx, Hh) {
+          const L = x0 + dp + W * 0.04, cx = (L + W) / 2;
+          Hh.name(cx, H * 0.42, W - L - W * 0.06, H * 0.42);
+          Hh.sub(cx, H * 0.78, W - L - W * 0.08, H * 0.14);
+        },
+      };
+    },
+  },
+  gradcap: {
+    label: 'قبعة تخرّج', icon: '🎓', sizeLabel: 'العرض', group: 'occasion', def: 55,
+    build(P) {
+      const W = P.size, H = W * 0.84;
+      const base = new Path2D();
+      base.moveTo(W / 2, 0); base.lineTo(W, W * 0.2); base.lineTo(W / 2, W * 0.4); base.lineTo(0, W * 0.2); base.closePath();
+      base.rect(W * 0.24, W * 0.26, W * 0.52, W * 0.24);
+      roundRect(base, W * 0.06, W * 0.48, W * 0.88, W * 0.34, W * 0.08);
+      return {
+        W, H, base, hole: [W / 2, W * 0.17], holeR: Math.min(P.hole / 2, W * 0.05),
+        logoBox: [W * 0.4, W * 0.7, W * 0.2, W * 0.1],
+        backBox: { cx: W / 2, cy: W * 0.65, w: W * 0.74, h: W * 0.24 },
+        extraBase(ctx) {
+          ctx.lineWidth = W * 0.025; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(W * 0.8, W * 0.24); ctx.lineTo(W * 0.86, W * 0.27); ctx.lineTo(W * 0.86, W * 0.48); ctx.stroke();
+        },
+        raised(ctx, lw) {
+          if (!P.decor) return;
+          ctx.lineWidth = lw; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(W / 2, W * 0.2); ctx.lineTo(W * 0.8, W * 0.24); ctx.stroke();
+        },
+        text(ctx, Hh) {
+          Hh.name(W / 2, W * 0.61, W * 0.76, W * 0.15);
+          if (!Hh.decorLogo) Hh.sub(W / 2, W * 0.745, W * 0.66, W * 0.06);
+        },
+      };
+    },
+  },
+  rings: {
+    label: 'خاتمين (زواج)', icon: '💍', sizeLabel: 'العرض', group: 'occasion', def: 55,
+    build(P) {
+      const W = P.size, o = W * 0.05, r = W * 0.2, lw = W * 0.07;
+      const c1 = [W * 0.37, o + W * 0.27], c2 = [W * 0.63, o + W * 0.27];
+      const py = o + W * 0.47, ph = W * 0.3, H = py + ph + 1;
+      const base = new Path2D();
+      roundRect(base, W * 0.08, py, W * 0.84, ph, W * 0.08);
+      const dy = c2[1] - r - lw / 2;
+      base.moveTo(c2[0], dy - W * 0.05); base.lineTo(c2[0] + W * 0.045, dy); base.lineTo(c2[0], dy + W * 0.03); base.lineTo(c2[0] - W * 0.045, dy); base.closePath();
+      const clip = new Path2D(base); circle(clip, c1[0], c1[1], r + lw / 2); circle(clip, c2[0], c2[1], r + lw / 2);
+      return {
+        W, H, base, clipPath: clip, noHole: true,
+        logoBox: [W * 0.42, py + ph * 0.66, W * 0.16, ph * 0.26],
+        backBox: { cx: W / 2, cy: py + ph / 2, w: W * 0.7, h: ph * 0.6 },
+        extraBase(ctx) {
+          ctx.lineWidth = lw;
+          for (const [x, y] of [c1, c2]) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); }
+        },
+        raised() {},
+        text(ctx, Hh) {
+          Hh.name(W / 2, py + ph * 0.42, W * 0.72, ph * 0.5);
+          if (!Hh.decorLogo) Hh.sub(W / 2, py + ph * 0.8, W * 0.5, ph * 0.18);
+        },
+      };
+    },
+  },
+  baby: {
+    label: 'ملابس مولود', icon: '👶', sizeLabel: 'العرض', group: 'occasion', def: 50,
+    build(P) {
+      const W = P.size, H = W * 0.97;
+      const base = new Path2D();
+      base.moveTo(W * 0.28, W * 0.08); base.quadraticCurveTo(W * 0.5, W * 0.26, W * 0.72, W * 0.08);
+      base.lineTo(W * 0.95, W * 0.22); base.lineTo(W * 0.84, W * 0.38); base.lineTo(W * 0.74, W * 0.32);
+      base.lineTo(W * 0.74, W * 0.78); base.quadraticCurveTo(W * 0.66, W * 0.86, W * 0.62, W * 0.95);
+      base.lineTo(W * 0.38, W * 0.95); base.quadraticCurveTo(W * 0.34, W * 0.86, W * 0.26, W * 0.78);
+      base.lineTo(W * 0.26, W * 0.32); base.lineTo(W * 0.16, W * 0.38); base.lineTo(W * 0.05, W * 0.22); base.closePath();
+      circle(base, W * 0.27, W * 0.075, W * 0.075);
+      return {
+        W, H, base, hole: [W * 0.27, W * 0.075], holeR: Math.min(P.hole / 2, W * 0.04),
+        logoBox: [W * 0.4, W * 0.68, W * 0.2, W * 0.12],
+        backBox: { cx: W / 2, cy: W * 0.55, w: W * 0.4, h: W * 0.3 },
+        raised(ctx, lw) {
+          if (!P.decor) return;
+          ctx.lineWidth = lw;
+          for (const x of [0.44, 0.5, 0.56]) { ctx.beginPath(); ctx.arc(W * x, W * 0.88, W * 0.012, 0, Math.PI * 2); ctx.fill(); }
+        },
+        text(ctx, Hh) {
+          Hh.name(W / 2, W * 0.47, W * 0.42, W * 0.14);
+          if (!Hh.decorLogo) Hh.sub(W / 2, W * 0.62, W * 0.4, W * 0.06);
+        },
+      };
+    },
+  },
   coaster: {
     label: 'مسند أكواب', icon: '⭕', sizeLabel: 'القطر', group: 'home', def: 90,
     build(P) {
@@ -625,7 +794,7 @@ export function rasterize(P) {
   // البارز: إطار + خطوط ديكور
   const Rr = mk();
   const hr = helper(Rr.ctx); hr.decorLogo = P._hasDecorLogo && !!T.logoBox;
-  Rr.ctx.save(); Rr.ctx.clip(T.base); T.raised(Rr.ctx, P.lineW, hr); Rr.ctx.restore();
+  Rr.ctx.save(); Rr.ctx.clip(T.clipPath || T.base); T.raised(Rr.ctx, P.lineW, hr); Rr.ctx.restore();
   if (P.border && !T.noHole) { Rr.ctx.lineWidth = P.borderW; Rr.ctx.beginPath(); Rr.ctx.arc(T.hole[0], T.hole[1], holeR + P.borderW / 2, 0, Math.PI * 2); Rr.ctx.stroke(); }
   const raisedF = read(Rr);
   // الإطار البارز = حافة الشكل الخارجية فقط (من الحقل، حتى لا تظهر خطوط تداخل الأجزاء)

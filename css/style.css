@@ -249,3 +249,38 @@ details.more .actions { margin-top: 8px; }
 .presets button:hover { border-color: var(--accent); }
 .c-text, .c-text2, .c-logo, .c-back { display: none; }
 body.cc-text .c-text, body.cc-text .c-text2, body.cc-beans_text .c-text, body.cc-logo .c-logo, body.cb-text .c-back { display: block; }
+
+/* ---------- v4 ---------- */
+#brandLogo { height: 30px; width: auto; border-radius: 6px; }
+.modal { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .55); display: grid; place-items: center; padding: 16px; animation: fade .2s; }
+.modal-box { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-shadow: var(--shadow); }
+.modal-box.wide { width: min(820px, 100%); }
+.modal-box h3 { margin: 0 40px 12px 0; }
+.modal-x { position: absolute; top: 12px; left: 12px; }
+.ar-stage { position: relative; height: min(60vh, 520px); border-radius: 14px; overflow: hidden; background: var(--bg-2); }
+.ar-stage model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
+.ar-btn { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); }
+.ar-qr { display: flex; gap: 14px; align-items: center; margin-top: 12px; }
+.ar-qr canvas { width: 140px; height: 140px; border-radius: 10px; flex: none; }
+.story-prev { display: block; width: 100%; max-height: 56vh; object-fit: contain; border-radius: 12px; background: var(--bg-2); }
+.seg.inline { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); margin: 10px 0; }
+.cafe-hero { margin-bottom: 20px; }
+.cafe-hero h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); margin: 10px 0; }
+.why { list-style: none; padding: 0; display: grid; gap: 10px; line-height: 1.8; }
+.pkg input { width: 80px !important; text-align: center; }
+.pkg td:first-child { text-align: start; }
+.about { display: grid; gap: 20px; }
+.about-card p { line-height: 2; color: var(--muted); white-space: pre-line; }
+.contact { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.contact a, .contact span { display: inline-flex; gap: 6px; align-items: center; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--text); background: var(--bg-2); font-weight: 700; }
+.reviews { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.review { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.review b { display: block; margin-bottom: 6px; }
+.review .stars { color: var(--accent); letter-spacing: 2px; }
+.foot-links { margin-bottom: 8px; }
+.foot-links a { color: var(--muted); text-decoration: none; font-weight: 700; }
+html[dir="ltr"] .modal-x { left: auto; right: 12px; }
+html[dir="ltr"] .modal-box h3 { margin: 0 0 12px 40px; }
+html[dir="ltr"] .field label a { float: right; }
+#installBtn { margin: 4px auto 10px; display: block; }
+#installBtn[hidden] { display: none; }
