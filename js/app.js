@@ -824,7 +824,7 @@ const BD = {
       key: this.key, w: this.num('bdW', 15, 200, 68.6), d: this.num('bdD', 10, 150, 53.3), head: this.num('bdHead', 3, 60, 14), mount: $('#bdMount').value,
       sh: this.num('bdSh', 2, 30, 5), hole: this.num('bdHole', 1.5, 6, 3.2), stand: this.num('bdStand', 4, 12, 6), pin: $('#bdPin').checked, holes: this.holes(),
       ports: this.ports.map((p) => ({ ...p })), wall: this.num('bdWall', 1.6, 6, 2.4), clear: this.num('bdClear', 0.2, 3, 0.6), lidClear: this.num('bdLidClr', 0.1, 0.8, 0.3),
-      lid: $('#bdLid').checked, ears: $('#bdEars').checked, vents: $('#bdVents').value, label: $('#bdLabel').value.trim(), labelOn: $('#bdLabelOn').value, font: $('#bdFont').value,
+      lid: $('#bdLid').checked, fasten: $('#bdFasten').value, screw: parseFloat($('#bdScrew').value) || 3, ears: $('#bdEars').checked, vents: $('#bdVents').value, label: $('#bdLabel').value.trim(), labelOn: $('#bdLabelOn').value, font: $('#bdFont').value,
       showPcb: $('#bdPcb').checked, colors: this.colors(),
     };
   },
@@ -834,7 +834,7 @@ const BD = {
     set('#bdW', P.w); set('#bdD', P.d); set('#bdHead', P.head); set('#bdMount', P.mount); set('#bdSh', P.sh); set('#bdHole', P.hole); set('#bdStand', P.stand); set('#bdPin', P.pin);
     if (P.holes) $('#bdHolesTxt').value = P.holes.map((h) => h.join(', ')).join('\n');
     if (P.ports) { this.ports = P.ports.map((p) => ({ ...p })); this.renderPorts(); }
-    set('#bdWall', P.wall); set('#bdClear', P.clear); set('#bdLidClr', P.lidClear); set('#bdLid', P.lid); set('#bdEars', P.ears); set('#bdVents', P.vents);
+    set('#bdWall', P.wall); set('#bdClear', P.clear); set('#bdLidClr', P.lidClear); set('#bdLid', P.lid); set('#bdFasten', P.fasten); set('#bdScrew', P.screw); set('#bdEars', P.ears); set('#bdVents', P.vents);
     set('#bdLabel', P.label); set('#bdLabelOn', P.labelOn); set('#bdFont', P.font); set('#bdPcb', P.showPcb);
     if (P.colors) $$('#bdColors input').forEach((e) => { if (P.colors[e.dataset.k]) e.value = P.colors[e.dataset.k]; });
     this.sync();
@@ -844,7 +844,7 @@ const BD = {
     this.write({ key: this.key, w: b.w, d: b.d, head: b.head, mount: b.mount, sh: b.sh, hole: b.hole, holes: b.holes, ports: b.ports });
     if (upd) this.update();
   },
-  sync() { $$('.bd-holes').forEach((e) => (e.hidden = $('#bdMount').value !== 'holes')); },
+  sync() { $$('.bd-holes').forEach((e) => (e.hidden = $('#bdMount').value !== 'holes')); $$('.bd-fasten').forEach((e) => (e.hidden = !$('#bdLid').checked)); $$('.bd-screw').forEach((e) => (e.hidden = $('#bdFasten').value !== 'screws')); },
   renderPorts() {
     const W = [['left', 'يسار'], ['right', 'يمين'], ['front', 'أمامي'], ['back', 'خلفي']];
     $('#bdPorts').innerHTML = this.ports.map((p, i) => `<div class="port" data-i="${i}">
@@ -883,6 +883,8 @@ const BD = {
       if (B.lid && this.stats.box[0] > 256) w.push('العلبة مع الغطاء أعرض من أغلب البلاطات (256 مم) — اطبعهم كل واحد لوحده.');
       if (B.label && B.labelOn === 'lid' && ['lid', 'both'].includes(B.vents)) w.push('النص على الغطاء قد يتداخل مع فتحات التهوية — انقله للواجهة الأمامية.');
       if (B.key === 'esp32' || B.key === 'nano') w.push('الدبابيس اللحام تحت اللوحة تحتاج قاعدة ≥ 8 مم — تأكد من «ارتفاع القاعدة».');
+      if (B.lid && B.fasten === 'screws') w.push(`يحتاج 4 مسامير M${B.screw} بطول 8–10 مم (برغي ذاتي القلاوظ). العلبة صارت أكبر بـ ${fmt(2 * (B.screw + 4.8))} مم في كل اتجاه لأعمدة الزوايا.`);
+      if (B.lid && B.fasten === 'snap') w.push('القفل يعتمد على مرونة الحافة — يشتغل أفضل مع PETG أو PLA، وقد تحتاج تعدّل «فراغ الغطاء» لين يضبط.');
       if (B.lid) w.push('الغطاء مطبوع بوضعية التركيب (الحافة للأسفل) — اقلبه عند الطباعة أو استخدم دعامات خفيفة.');
       $('#bdWarn').hidden = !w.length; $('#bdWarn').innerHTML = w.map((x) => '⚠️ ' + x).join('<br>');
     } catch (e) { console.error(e); toast('تعذر توليد العلبة: ' + e.message); }
@@ -907,7 +909,7 @@ BD.name = '';
 const bdUpd = debounce(() => BD.update(), 350);
 $$('#boards .panel input, #boards .panel select, #boards .panel textarea').forEach((el) => {
   if (el.type === 'color' || el.id === 'bdBoard' || el.id === 'bdAdd') return;
-  el.addEventListener('input', () => { if (el.id === 'bdMount') BD.sync(); bdUpd(); });
+  el.addEventListener('input', () => { if (['bdMount', 'bdLid', 'bdFasten'].includes(el.id)) BD.sync(); bdUpd(); });
 });
 $('#bdColors').addEventListener('input', () => BD.recolor());
 $('#bdAddBtn').onclick = () => { BD.ports.push(newPort($('#bdAdd').value)); BD.renderPorts(); BD.update(); };
@@ -1040,7 +1042,7 @@ const O = {
         title: `علبة ${BD.name || BOARDS[B.key]?.n || 'لوحة'}`, unit: BD.stats.price,
         rows: [
           ['اللوحة', BD.name || BOARDS[B.key]?.n || 'مخصصة'], ['مقاس اللوحة', `${B.w} × ${B.d} مم`], ['مقاس العلبة', BD.stats.box.map((v) => fmt(v)).join(' × ') + ' مم'],
-          ['الفتحات', B.ports.map((p) => PORT_TYPES[p.type][0]).join(', ') || '—'], ['الغطاء', B.lid ? 'نعم' : 'لا'], ['الكتابة', B.label || '—'],
+          ['الفتحات', B.ports.map((p) => PORT_TYPES[p.type][0]).join(', ') || '—'], ['الغطاء', !B.lid ? 'لا' : { friction: 'نعم (بالضغط)', screws: 'نعم (بمسامير)', snap: 'نعم (قفل)' }[B.fasten || 'friction']], ['الكتابة', B.label || '—'],
           ['الألوان', pr.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
         ],
         colorsText: pr.map((p) => `${names[p.key]} ${p.color}`).join('، '),

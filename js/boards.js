@@ -24,11 +24,10 @@ export const BOARDS = {
 };
 export const newPort = (type = 'usbc') => P(type, 'left', 10);
 
-const PX = 0.2;
 const shift = (t, dx, dy, dz = 0) => { for (let k = 0; k < t.length; k += 3) { t[k] += dx; t[k + 1] += dy; t[k + 2] += dz; } return t; };
 
 /** لوح مسطح L×H بثقوب مستطيلة وبثق T. draw(ctx) يرسم بالمم (u أفقي، v رأسي للأعلى). يرجع مثلثات (x=u, y=v, z=0..T) */
-function plate(L, H, T, draw) {
+function plate(L, H, T, draw, PX = 0.2) {
   const m = 1, cw = Math.ceil((L + 2 * m) / PX), ch = Math.ceil((H + 2 * m) / PX);
   const c = document.createElement('canvas'); c.width = cw; c.height = ch;
   const x = c.getContext('2d', { willReadFrequently: true });
@@ -38,12 +37,13 @@ function plate(L, H, T, draw) {
   for (let k = 0; k < f.length; k++) f[k] = d[k * 4 + 3] / 255;
   return shift(fieldToSolid(f, cw, ch, PX, 0, T), -m, -(m - PX));
 }
-const cut = (x, rects) => { x.globalCompositeOperation = 'destination-out'; for (const [u, v, w, h] of rects) x.fillRect(u - w / 2, v - h / 2, w, h); x.globalCompositeOperation = 'source-over'; };
+const cut = (x, rects, circles = []) => { x.globalCompositeOperation = 'destination-out'; for (const [u, v, w, h] of rects) x.fillRect(u - w / 2, v - h / 2, w, h); for (const [u, v, r] of circles) { x.beginPath(); x.arc(u, v, r, 0, Math.PI * 2); x.fill(); } x.globalCompositeOperation = 'source-over'; };
 const mapT = (t, fn) => { for (let k = 0; k < t.length; k += 3) { const o = fn(t[k], t[k + 1], t[k + 2]); t[k] = o[0]; t[k + 1] = o[1]; t[k + 2] = o[2]; } return orient(t); };
 
 export function buildBoard(B) {
-  const T = B.wall, c = B.mount === 'holes' ? B.clear : Math.max(B.clear, 1.7), sh = B.sh, pcb = 1.6;
-  const iw = B.w + 2 * c, id = B.d + 2 * c, ih = sh + pcb + B.head, H = T + ih, ow = iw + 2 * T, od = id + 2 * T;
+  const T = B.wall, c = B.mount === 'holes' ? B.clear : Math.max(B.clear, 1.7), sh = B.sh, pcb = 1.6, fasten = B.fasten || 'friction', screws = B.lid && fasten === 'screws', snap = B.lid && fasten === 'snap';
+  const scr = B.screw || 3, OD = scr + 4.2, ext = screws ? OD + 0.6 : 0, cx = c + ext, cy = c + ext;
+  const iw = B.w + 2 * cx, id = B.d + 2 * cy, ih = sh + pcb + B.head, H = T + ih, ow = iw + 2 * T, od = id + 2 * T;
   const parts = [], body = [], ov = 0.06;
   const zPcb = T + sh + pcb;
   // الأرضية (+ آذان التثبيت)
@@ -56,7 +56,7 @@ export function buildBoard(B) {
   const holes = { front: [], back: [], left: [], right: [] };
   for (const p of B.ports) {
     if (!holes[p.wall]) continue;
-    const along = p.wall === 'back' ? ow - (T + c + p.pos) : T + c + p.pos; // pos يُقاس من حافة اللوحة اليسرى (أمامي/خلفي) أو الأمامية (يمين/يسار)
+    const along = p.wall === 'back' ? ow - (T + cx + p.pos) : p.wall === 'front' ? T + cx + p.pos : T + cy + p.pos; // pos يُقاس من حافة اللوحة اليسرى (أمامي/خلفي) أو الأمامية (يمين/يسار)
     const zc = Math.min(H - 1.5, Math.max(T + 1.2, zPcb + p.z + p.h / 2));
     holes[p.wall].push([along, zc, p.w, Math.min(p.h, H - 1 - (zc - p.h / 2))]);
   }
@@ -64,6 +64,7 @@ export function buildBoard(B) {
     const n = Math.max(1, Math.min(14, Math.floor((id - 8) / 5))), zc = T + ih * 0.55;
     for (const w of ['left', 'right']) for (let i = 0; i < n; i++) holes[w].push([T + ((i + 0.5) * id) / n, zc, 2.2, ih * 0.45]);
   }
+  if (snap) for (const w of ['front', 'back']) holes[w].push([ow / 2, H - 2.15, 10, 2.5]);
   const wallPlate = (L, list) => plate(L, H, T + ov, (x) => { x.fillRect(0, 0, L, H); cut(x, list); });
   const long = ow, short = id; // الأمامي/الخلفي بطول ow الكامل، واليمين/اليسار بين الاثنين
   body.push(mapT(wallPlate(long, holes.front), (u, v, t) => [u - ow / 2, -id / 2 - T + t, v]));
@@ -90,10 +91,13 @@ export function buildBoard(B) {
   if (B.mount !== 'holes') { // أركان توجيه L حول اللوحة (تلامس الجدار وتبعد 0.4 مم عن اللوحة)
     const L = 8, gh = T + sh + pcb + 2.5, o = 0.4, r = (a, b, c2, d2) => [Math.min(a, b), Math.min(c2, d2), Math.max(a, b), Math.max(c2, d2)];
     for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
-      const ex = sx * (B.w / 2), ey = sy * (B.d / 2), ox = sx * (B.w / 2 + o), oy = sy * (B.d / 2 + o), fx = sx * (B.w / 2 + c + 0.05), fy = sy * (B.d / 2 + c + 0.05);
+      const ex = sx * (B.w / 2), ey = sy * (B.d / 2), ox = sx * (B.w / 2 + o), oy = sy * (B.d / 2 + o), fx = sx * (B.w / 2 + 1.6), fy = sy * (B.d / 2 + 1.6);
       const A = r(ox, fx, fy, ey - sy * L), Bq = r(fx, ex - sx * L, oy, fy);
       body.push(box(A[0], A[1], T - 0.05, A[2], A[3], gh), box(Bq[0], Bq[1], T - 0.05, Bq[2], Bq[3], gh));
     }
+  }
+  if (screws) { // أعمدة البراغي بالزوايا الأربع (ثقب توجيه للبرغي)
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) body.push(shift(revolve([[scr * 0.42, T - 0.05], [OD / 2, T - 0.05], [OD / 2, H], [scr * 0.42, H]], 40, true), sx * (iw / 2 - OD / 2 + 0.05), sy * (id / 2 - OD / 2 + 0.05)));
   }
   // ملصق نصي على الواجهة الأمامية
   const decos = [];
@@ -105,14 +109,19 @@ export function buildBoard(B) {
   // الغطاء (بحافة تدخل داخل العلبة) بجانب العلبة
   if (B.lid) {
     const lc = B.lidClear, lipH = 3, plateT = 2.4, ox = ow / 2 + 10 + ow / 2 + ear, lw = iw - 2 * lc, ld = id - 2 * lc, lt = 1.6;
-    const lip = plate(lw, ld, lipH + 0.02, (x) => { x.fillRect(0, 0, lw, ld); x.globalCompositeOperation = 'destination-out'; x.fillRect(lt, lt, lw - 2 * lt, ld - 2 * lt); x.globalCompositeOperation = 'source-over'; });
+    const ns = OD + 0.8, lip = plate(lw, ld, lipH + 0.02, (x) => { x.fillRect(0, 0, lw, ld); x.globalCompositeOperation = 'destination-out'; x.fillRect(lt, lt, lw - 2 * lt, ld - 2 * lt); if (screws) for (const [a, b2] of [[0, 0], [lw - ns, 0], [0, ld - ns], [lw - ns, ld - ns]]) x.fillRect(a, b2, ns, ns); x.globalCompositeOperation = 'source-over'; });
     const vents = [];
     if (B.vents === 'lid' || B.vents === 'both') {
       const n = Math.max(1, Math.floor((iw - 8) / 5));
       for (let i = 0; i < n; i++) vents.push([ow / 2 - ((n - 1) * 5) / 2 + i * 5, od / 2, 2.2, Math.max(8, id * 0.55)]);
     }
-    const top = plate(ow, od, plateT, (x) => { x.fillRect(0, 0, ow, od); cut(x, vents); });
+    const sholes = screws ? [-1, 1].flatMap((sx) => [-1, 1].map((sy) => [ow / 2 + sx * (iw / 2 - OD / 2), od / 2 + sy * (id / 2 - OD / 2), (scr + 0.5) / 2])) : [];
+    const top = plate(ow, od, plateT, (x) => { x.fillRect(0, 0, ow, od); cut(x, vents, sholes); });
     const lidParts = [mapT(lip, (u, v, t) => [u - lw / 2 + ox, v - ld / 2, t]), mapT(top, (u, v, t) => [u - ow / 2 + ox, v - od / 2, lipH + t])];
+    if (snap) { // خطاطيف على الوجه الأمامي والخلفي للحافة: قمة مسطحة وانحدار سفلي
+      const hw = 8, hook = () => plate(1.6, 2.2, hw, (x) => { x.beginPath(); x.moveTo(-0.4, 0); x.lineTo(0, 0); x.lineTo(1.2, 2); x.lineTo(-0.4, 2); x.closePath(); x.fill(); }, 0.05);
+      lidParts.push(mapT(hook(), (u, v, t) => [ox + t - hw / 2, -ld / 2 - u, v]), mapT(hook(), (u, v, t) => [ox + t - hw / 2, ld / 2 + u, v]));
+    }
     parts.push({ key: 'lid', tris: mergeTris(lidParts) });
     if (B.label && B.labelOn === 'lid') {
       const t = deco({ content: 'text', text1: B.label, text2: '', font: B.font, depth: 1 }, iw * 0.8, Math.min(id * 0.5, 16), (x, y, o) => [x + ox, y, lipH + plateT + o]);
