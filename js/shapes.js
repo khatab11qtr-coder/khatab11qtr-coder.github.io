@@ -4,6 +4,7 @@ import { maskedSlab, mergeTris, boxBlur, dilate } from './mesh.js';
 import { fieldToSolid } from './contour.js';
 import { grayscale } from './photo.js';
 import { revolve, torus, box, orient, decoField } from './cup3d.js';
+import { plate, mapT } from './plate.js';
 
 export const SHAPES = {
   box: { label: 'صندوق', icon: '📦', flat: true, hollow: true },
@@ -121,11 +122,41 @@ export function buildShape(P) {
     else {
       const inner = erode(F.f, F.cw, F.ch, px, T), ring = new Float32Array(F.f.length);
       for (let k = 0; k < ring.length; k++) ring[k] = Math.max(0, F.f[k] - inner[k]);
-      bodyParts.push(solid(F, F.f, 0, T), solid(F, ring, T - 0.02, h));
+      // طرق تثبيت الغطاء (للصندوق والأسطوانة فقط)
+      const can = shape === 'box' || shape === 'cyl', fasten = lid && can ? P.fasten || 'friction' : 'friction';
+      const lipHh = Math.min(4, h * 0.3), screws = fasten === 'screws', snap = fasten === 'snap' && h >= T + lipHh + 6;
+      const scr = P.screw || 3, OD = scr + 4.2, r = OD / 2;
+      const posts = [];
+      if (screws) {
+        if (shape === 'box') { const Ri = Math.max(0, Math.min(P.corner, w / 2, d / 2) - T), a = Math.max(r, Ri); for (const sx of [-1, 1]) for (const sy of [-1, 1]) posts.push([sx * (w / 2 - T - a), sy * (d / 2 - T - a)]); }
+        else for (const g of [45, 135, 225, 315]) posts.push([(w / 2 - T - r) * Math.cos((g * Math.PI) / 180), (d / 2 - T - r) * Math.sin((g * Math.PI) / 180)]);
+      }
+      const carveC = (f, cx0, cy0, rad) => {
+        const ci = (cx0 + F.off[0]) / px, cj = F.ch - 1 - (cy0 + F.off[1]) / px, rp = rad / px;
+        for (let j = Math.max(0, Math.floor(cj - rp - 1)); j <= Math.min(F.ch - 1, Math.ceil(cj + rp + 1)); j++) for (let i = Math.max(0, Math.floor(ci - rp - 1)); i <= Math.min(F.cw - 1, Math.ceil(ci + rp + 1)); i++) if ((i - ci) ** 2 + (j - cj) ** 2 <= rp * rp) f[j * F.cw + i] = 0;
+      };
+      const carveR = (f, x0, y0, x1, y1) => {
+        const i0 = Math.max(0, Math.floor((x0 + F.off[0]) / px)), i1 = Math.min(F.cw - 1, Math.ceil((x1 + F.off[0]) / px));
+        const j0 = Math.max(0, Math.floor(F.ch - 1 - (y1 + F.off[1]) / px)), j1 = Math.min(F.ch - 1, Math.ceil(F.ch - 1 - (y0 + F.off[1]) / px));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f[j * F.cw + i] = 0;
+      };
+      bodyParts.push(solid(F, F.f, 0, T));
+      if (snap) { // نوافذ بالجدار الأمامي والخلفي ليدخل فيها خطاف الغطاء
+        const wz1 = h - lipHh + 2.1, wz0 = wz1 - 2.5, mid = ring.slice();
+        for (const sg of [-1, 1]) carveR(mid, -5, sg < 0 ? -d / 2 - 1 : d / 2 - T - 0.8, 5, sg < 0 ? -d / 2 + T + 0.8 : d / 2 + 1);
+        bodyParts.push(solid(F, ring, T - 0.02, wz0 + 0.02), solid(F, mid, wz0, wz1 + 0.02), solid(F, ring, wz1, h));
+      } else bodyParts.push(solid(F, ring, T - 0.02, h));
+      for (const [px0, py0] of posts) bodyParts.push(revolve([[scr * 0.42, T - 0.05], [r, T - 0.05], [r, h], [scr * 0.42, h]], 40, true).map((v, k) => v + (k % 3 === 0 ? px0 : k % 3 === 1 ? py0 : 0)));
       if (lid) {
-        const lip = erode(F.f, F.cw, F.ch, px, T + clr); lipH = Math.min(4, h * 0.3);
+        const lip = erode(F.f, F.cw, F.ch, px, T + clr), plateF = F.f.slice(); lipH = lipHh;
+        for (const [px0, py0] of posts) { carveC(lip, px0, py0, r + 0.5); carveC(plateF, px0, py0, (scr + 0.5) / 2); }
         const lidPlate = 2.4, ox = w / 2 + 8 + w / 2;
-        lidT = mergeTris([shift(solid(F, lip, 0, lipH + 0.02), 0, 0), shift(solid(F, F.f, lipH, lipH + lidPlate), 0, 0)]);
+        const lidParts = [solid(F, lip, 0, lipH + 0.02), solid(F, plateF, lipH, lipH + lidPlate)];
+        if (snap) {
+          const hw = 8, yl = d / 2 - T - clr, hook = () => plate(2, 2.2, hw, (x) => { x.beginPath(); x.moveTo(-0.8, 0); x.lineTo(0, 0); x.lineTo(1.2, 2); x.lineTo(-0.8, 2); x.closePath(); x.fill(); }, 0.05);
+          lidParts.push(mapT(hook(), (u, v, t) => [t - hw / 2, -yl - u, v]), mapT(hook(), (u, v, t) => [t - hw / 2, yl + u, v]));
+        }
+        lidT = mergeTris(lidParts);
         for (let k = 0; k < lidT.length; k += 3) lidT[k] += ox;
         lidZ0 = lipH + lidPlate; lidX = ox;
       }

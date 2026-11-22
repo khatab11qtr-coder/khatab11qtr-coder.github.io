@@ -691,7 +691,7 @@ const SH = {
   read() {
     const shape = this.shape, w = this.num('shW', 10, 250, 80), d = this.num('shD', 10, 250, 80), h = this.num('shH', 5, 250, 50);
     return {
-      shape, w, d, h, corner: Math.min(+$('#shCorner').value, w / 2, d / 2), hollow: $('#shHollow').checked, lid: $('#shLid').checked,
+      shape, w, d, h, corner: Math.min(+$('#shCorner').value, w / 2, d / 2), hollow: $('#shHollow').checked, lid: $('#shLid').checked, fasten: $('#shFasten').value, screw: parseFloat($('#shScrew').value) || 3,
       wall: Math.min(this.num('shWall', 1.2, 8, 2.4), Math.min(w, d) / 2 - 1), clearance: this.num('shClr', 0.1, 0.8, 0.3),
       content: SHAPES[shape].flat ? $('#shContent').value : 'none', faces: $('#shFaces').value, depth: +$('#shDepth').value,
       contrast: +$('#shContrast').value, invert: $('#shInv').checked, text1: $('#shText1').value.trim(), text2: $('#shText2').value.trim(), font: $('#shFont').value,
@@ -702,7 +702,7 @@ const SH = {
   write(P) {
     const set = (id, v) => { const e = $(id); if (e && v != null) e.type === 'checkbox' ? (e.checked = !!v) : (e.value = v); };
     this.setShape(P.shape || 'box', false);
-    set('#shW', P.w); set('#shD', P.d); set('#shH', P.h); set('#shCorner', P.corner); set('#shHollow', P.hollow); set('#shLid', P.lid);
+    set('#shW', P.w); set('#shD', P.d); set('#shH', P.h); set('#shCorner', P.corner); set('#shHollow', P.hollow); set('#shLid', P.lid); set('#shFasten', P.fasten); set('#shScrew', P.screw);
     set('#shWall', P.wall); set('#shClr', P.clearance); set('#shContent', P.content); set('#shFaces', P.faces); set('#shDepth', P.depth);
     set('#shContrast', P.contrast); set('#shInv', P.invert); set('#shText1', P.text1); set('#shText2', P.text2); set('#shFont', P.font);
     set('#shLoop', P.loop); set('#shHole', P.hole);
@@ -719,6 +719,7 @@ const SH = {
   sync() {
     const S = SHAPES[this.shape], hollow = S.hollow && $('#shHollow').checked, lid = hollow && $('#shLid').checked, c = $('#shContent').value, deco = S.flat && c !== 'none';
     const vis = (sel, on) => $$(sel).forEach((e) => (e.hidden = !on));
+    vis('.sh-fasten', lid && (this.shape === 'box' || this.shape === 'cyl')); vis('.sh-screw', lid && (this.shape === 'box' || this.shape === 'cyl') && $('#shFasten').value === 'screws');
     vis('.sh-corner', this.shape === 'box'); vis('.sh-hollow', S.hollow); vis('.sh-hollow-opts', hollow);
     vis('.sh-deco', S.flat); vis('.sh-img', S.flat && (c === 'photo' || c === 'logo')); vis('.sh-photo-only', c === 'photo'); vis('.sh-logo-only', c === 'logo');
     vis('.sh-text', S.flat && c === 'text'); vis('.sh-decoopts', deco);
@@ -755,6 +756,8 @@ const SH = {
       if (P.hollow && S.hollow && !P.lid && ['top', 'all5'].includes(P.faces) && P.content !== 'none') w.push('الأعلى مفتوح بدون غطاء — النقش على «الأعلى» ما انحط. أضف غطاء أو اختر وجهاً ثانياً.');
       if (P.hollow && S.hollow && P.wall < 1.6) w.push('الجدار رفيع — 1.6 مم أو أكثر أقوى بعد الطباعة.');
       if (P.hollow && S.hollow && P.lid && this.stats.box[0] > 256) w.push('العلبة مع الغطاء أعرض من أغلب البلاطات (256 مم) — صغّر المقاس أو اطبع كل قطعة لوحدها.');
+      if (P.hollow && P.lid && ['box', 'cyl'].includes(P.shape) && P.fasten === 'screws') w.push(`يحتاج 4 مسامير M${P.screw} بطول 8–10 مم (ذاتية القلاوظ).`);
+      if (P.hollow && P.lid && ['box', 'cyl'].includes(P.shape) && P.fasten === 'snap') w.push(P.h >= P.wall + Math.min(4, P.h * 0.3) + 6 ? 'القفل يعتمد على مرونة الحافة — يشتغل أفضل مع PETG أو PLA، وقد تحتاج تعدّل «فراغ الغطاء» لين يضبط.' : 'الصندوق قصير على القفل — زد الارتفاع أو اختر مسامير.');
       if (P.hollow && S.hollow && P.lid) w.push('الغطاء مطبوع بوضعية التركيب (الحافة للأسفل) — يحتاج دعامات خفيفة أو اقلبه عند الطباعة.');
       if (P.shape === 'cyl' && P.w !== P.d && P.content !== 'none' && P.faces !== 'top') w.push('النقش الملفوف يحتاج أسطوانة دائرية (العرض = العمق).');
       if (P.shape === 'sphere') w.push('الكرة لها قاعدة مسطحة صغيرة عشان تثبت على السرير.');
@@ -787,7 +790,7 @@ $$('#shapes .panel input, #shapes .panel select').forEach((el) => {
   if (el.id === 'shImg' || el.type === 'color') return;
   el.addEventListener('input', () => {
     const o = $('#' + el.id + 'O'); if (o) o.textContent = el.value;
-    if (['shContent', 'shHollow', 'shLid', 'shLoop'].includes(el.id)) SH.sync();
+    if (['shContent', 'shHollow', 'shLid', 'shLoop', 'shFasten'].includes(el.id)) SH.sync();
     if ((el.id === 'shBg' || el.id === 'shThresh') && SH.img) SH.makeStencil();
     shUpd();
   });
@@ -1027,7 +1030,7 @@ const O = {
       return {
         title: `${S.label} ${P.w}×${P.d}×${P.h} مم`, unit: SH.stats.price,
         rows: [
-          ['النوع', `${S.icon} ${S.label}`], ['التجويف', P.hollow && S.hollow ? (P.lid ? 'مجوّف + غطاء' : 'مجوّف') : '—'], ['المقاس', `${P.w} × ${P.d} × ${P.h} مم`],
+          ['النوع', `${S.icon} ${S.label}`], ['التجويف', P.hollow && S.hollow ? (P.lid ? 'مجوّف + غطاء' : 'مجوّف') : '—'], ['تثبيت الغطاء', P.hollow && P.lid && ['box', 'cyl'].includes(P.shape) ? { friction: 'بالضغط', screws: 'بمسامير', snap: 'قفل' }[P.fasten || 'friction'] : '—'], ['المقاس', `${P.w} × ${P.d} × ${P.h} مم`],
           ['النقش', { none: '—', photo: 'صورة بارزة', logo: 'شعار', text: 'كتابة' }[P.content]], ['الكتابة', P.content === 'text' ? [P.text1, P.text2].filter(Boolean).join(' / ') : '—'],
           ['الألوان', SH.parts.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
         ],

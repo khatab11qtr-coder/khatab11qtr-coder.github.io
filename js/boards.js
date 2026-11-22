@@ -1,9 +1,9 @@
 // علب لوحات الإلكترونيات: قواعد تثبيت + فتحات المنافذ + غطاء بحافة + تهوية + آذان تثبيت + ملصق نصي
 // أبعاد اللوحات وأماكن الثقوب والمنافذ تقريبية من المواصفات المعروفة — تحقق منها بالمسطرة قبل الطباعة.
 import { mergeTris } from './mesh.js';
-import { fieldToSolid } from './contour.js';
 import { revolve, box, orient } from './cup3d.js';
 import { deco } from './shapes.js';
+import { plate, cut, mapT } from './plate.js';
 
 /** منافذ شائعة: [العرض، الارتفاع، الإزاحة الرأسية عن سطح اللوحة] مع هامش للقابس */
 export const PORT_TYPES = {
@@ -25,20 +25,6 @@ export const BOARDS = {
 export const newPort = (type = 'usbc') => P(type, 'left', 10);
 
 const shift = (t, dx, dy, dz = 0) => { for (let k = 0; k < t.length; k += 3) { t[k] += dx; t[k + 1] += dy; t[k + 2] += dz; } return t; };
-
-/** لوح مسطح L×H بثقوب مستطيلة وبثق T. draw(ctx) يرسم بالمم (u أفقي، v رأسي للأعلى). يرجع مثلثات (x=u, y=v, z=0..T) */
-function plate(L, H, T, draw, PX = 0.2) {
-  const m = 1, cw = Math.ceil((L + 2 * m) / PX), ch = Math.ceil((H + 2 * m) / PX);
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const x = c.getContext('2d', { willReadFrequently: true });
-  x.setTransform(1 / PX, 0, 0, -1 / PX, m / PX, ch - m / PX); x.fillStyle = '#fff';
-  draw(x);
-  const d = x.getImageData(0, 0, cw, ch).data, f = new Float32Array(cw * ch);
-  for (let k = 0; k < f.length; k++) f[k] = d[k * 4 + 3] / 255;
-  return shift(fieldToSolid(f, cw, ch, PX, 0, T), -m, -(m - PX));
-}
-const cut = (x, rects, circles = []) => { x.globalCompositeOperation = 'destination-out'; for (const [u, v, w, h] of rects) x.fillRect(u - w / 2, v - h / 2, w, h); for (const [u, v, r] of circles) { x.beginPath(); x.arc(u, v, r, 0, Math.PI * 2); x.fill(); } x.globalCompositeOperation = 'source-over'; };
-const mapT = (t, fn) => { for (let k = 0; k < t.length; k += 3) { const o = fn(t[k], t[k + 1], t[k + 2]); t[k] = o[0]; t[k + 1] = o[1]; t[k + 2] = o[2]; } return orient(t); };
 
 export function buildBoard(B) {
   const T = B.wall, c = B.mount === 'holes' ? B.clear : Math.max(B.clear, 1.7), sh = B.sh, pcb = 1.6, fasten = B.fasten || 'friction', screws = B.lid && fasten === 'screws', snap = B.lid && fasten === 'snap';
