@@ -901,8 +901,9 @@ PART_NAMES.pcb = 'اللوحة (معاينة)';
 $('#bdBoard').innerHTML = Object.entries(BOARDS).map(([k, b]) => `<option value="${k}">${b.n}</option>`).join('');
 $('#bdAdd').innerHTML = Object.entries(PORT_TYPES).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('');
 if (store.get('b_colors', null)) $$('#bdColors input').forEach((e) => { const c = BD.colorsBy[e.dataset.k]; if (c) e.value = c; });
-BD.preset(BD.key, false); $('#bdBoard').value = BD.key;
-$('#bdBoard').addEventListener('change', (e) => BD.preset(e.target.value));
+BD.preset(/^[us]:/.test(BD.key) ? 'uno' : BD.key, false); $('#bdBoard').value = BD.key;
+$('#bdBoard').addEventListener('change', (e) => { if (!/^[us]:/.test(e.target.value)) { BD.name = ''; BD.preset(e.target.value); } });
+BD.name = '';
 const bdUpd = debounce(() => BD.update(), 350);
 $$('#boards .panel input, #boards .panel select, #boards .panel textarea').forEach((el) => {
   if (el.type === 'color' || el.id === 'bdBoard' || el.id === 'bdAdd') return;
@@ -930,6 +931,73 @@ $('#bdZip').onclick = async () => {
 $('#bdPNG').onclick = () => fetch(BD.view.snapshot()).then((r) => r.blob()).then((b) => download(b, BD.base() + '.png'));
 $('#bdOrder').onclick = () => { O.source = 'board'; go('order'); };
 
+/* ================= قوالبي: حفظ وتعديل القوالب بدون كود ================= */
+const MY = {
+  shop: { boards: [], shapes: [] },
+  own(kind) { return store.get('mine_' + kind, []); },
+  put(kind, arr) { store.set('mine_' + kind, arr); },
+  find(kind, id) { const [t, i] = id.split(':'); return t === 'u' ? this.own(kind).find((x) => x.id === i) : this.shop[kind][+i]; },
+  add(kind, name, P) { const a = this.own(kind), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5); a.push({ id, name, P }); this.put(kind, a); return 'u:' + id; },
+};
+const cleanP = (P) => { const o = JSON.parse(JSON.stringify({ ...P, photo: undefined, logoStencil: undefined })); return o; };
+function refreshMine() {
+  // قائمة اللوحات
+  const cur = BD.key, opt = (v, n) => `<option value="${v}">${escapeHTML(n)}</option>`;
+  const own = MY.own('boards'), shop = MY.shop.boards;
+  $('#bdBoard').innerHTML = Object.entries(BOARDS).map(([k, b]) => opt(k, b.n)).join('') +
+    (own.length ? `<optgroup label="${'قوالبي'}">${own.map((x) => opt('u:' + x.id, x.name)).join('')}</optgroup>` : '') +
+    (shop.length ? `<optgroup label="${'من المتجر'}">${shop.map((x, i) => opt('s:' + i, x.name)).join('')}</optgroup>` : '');
+  $('#bdBoard').value = cur; if ($('#bdBoard').value !== cur) $('#bdBoard').value = 'uno';
+  // أزرار قوالب الصناديق
+  $('#shPresets').querySelectorAll('.mine').forEach((e) => e.remove());
+  const add = (v, n, cls) => $('#shPresets').insertAdjacentHTML('beforeend', `<button class="chip mine" data-u="${v}" title="${cls}">⭐ ${escapeHTML(n)}</button>`);
+  MY.own('shapes').forEach((x) => add('u:' + x.id, x.name, 'قوالبي')); MY.shop.shapes.forEach((x, i) => add('s:' + i, x.name, 'من المتجر'));
+}
+function openMine(kind) {
+  const m = modal(`<h3>🗂️ قوالبي</h3><div class="mine-list"></div>
+    <div class="actions"><button class="btn small" data-a="export">⬇ تصدير كل قوالبي (ملف)</button><label class="btn small" style="cursor:pointer">⬆ استيراد ملف<input type="file" accept=".json,application/json" hidden data-a="import"></label></div>
+    <p class="hint">القوالب تنحفظ في متصفحك. لعرضها لكل زوار الموقع: صدّر الملف وأرسله لي أو ارفعه باسم gallery/presets.json في مستودع الموقع على GitHub.</p>`, { wide: false });
+  const names = { boards: 'لوحات', shapes: 'صناديق' };
+  const draw = () => {
+    const row = (k, id, n, ro) => `<div class="mrow" data-k="${k}" data-id="${id}"><span>${k === 'boards' ? '🔌' : '📦'} ${escapeHTML(n)}${ro ? ' <small>(المتجر)</small>' : ''}</span><button class="btn small" data-a="load">فتح</button>${ro ? '' : '<button class="btn small" data-a="ren">✏️</button><button class="btn small" data-a="del">🗑️</button>'}</div>`;
+    const html = ['boards', 'shapes'].map((k) => MY.own(k).map((x) => row(k, 'u:' + x.id, x.name)).join('') + MY.shop[k].map((x, i) => row(k, 's:' + i, x.name, true)).join('')).join('');
+    m.querySelector('.mine-list').innerHTML = html || '<p class="hint">ما عندك قوالب محفوظة — صمّم لوحة أو صندوق واضغط «💾 احفظ كقالب».</p>';
+  };
+  draw();
+  m.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-a]'); if (!b || !b.closest('.mrow')) { if (b?.dataset.a === 'export') exportMine(); return; }
+    const r = b.closest('.mrow'), k = r.dataset.k, id = r.dataset.id, ent = MY.find(k, id);
+    if (b.dataset.a === 'load') { m.close(); go(k === 'boards' ? 'boards' : 'shapes'); k === 'boards' ? BD.load(id) : SH.load(id); }
+    if (b.dataset.a === 'ren') { const n = prompt('الاسم الجديد:', ent.name); if (n?.trim()) { const a = MY.own(k); a.find((x) => x.id === id.slice(2)).name = n.trim(); MY.put(k, a); refreshMine(); draw(); } }
+    if (b.dataset.a === 'del') { if (confirm(`حذف «${ent.name}»؟`)) { MY.put(k, MY.own(k).filter((x) => x.id !== id.slice(2))); refreshMine(); draw(); } }
+  });
+  m.querySelector('[data-a=import]').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text()); let n = 0;
+      for (const k of ['boards', 'shapes']) for (const x of j[k] || []) if (x?.name && x?.P) { MY.add(k, String(x.name).slice(0, 60), x.P); n++; }
+      refreshMine(); draw(); toast(n ? `تم استيراد ${n} قالب ✓` : 'الملف ما فيه قوالب');
+    } catch { toast('ملف غير صالح'); }
+  });
+}
+function exportMine() { download(new Blob([JSON.stringify({ boards: MY.own('boards'), shapes: MY.own('shapes') }, null, 1)], { type: 'application/json' }), 'presets.json'); toast('تم تصدير قوالبك ✓'); }
+BD.load = function (id) { const e = MY.find('boards', id); if (!e) return; this.key = e.P.key || 'custom'; this.name = e.name; this.write({ ...e.P }); $('#bdBoard').value = id; store.set('b_board', id); this.update(); };
+SH.load = function (id) { const e = MY.find('shapes', id); if (!e) return; this.write({ ...e.P }); this.update(); };
+$('#bdSave').onclick = () => {
+  if (!BD.parts) return toast('انتظر لين يجهز التصميم');
+  const n = prompt('اسم القالب (مثال: Arduino + شاشة):', BD.name || BOARDS[BD.key]?.n || ''); if (!n?.trim()) return;
+  const id = MY.add('boards', n.trim(), cleanP(BD.read())); BD.name = n.trim(); refreshMine(); BD.key = BD.read().key; $('#bdBoard').value = id; store.set('b_board', id); toast('انحفظ في «قوالبي» ✓');
+};
+$('#shSave').onclick = () => {
+  if (!SH.parts) return toast('انتظر لين يجهز التصميم');
+  const n = prompt('اسم القالب (مثال: علبة هدية 10 سم):', ''); if (!n?.trim()) return;
+  MY.add('shapes', n.trim(), cleanP(SH.read())); refreshMine(); toast('انحفظ في «قوالبي» ✓ — تلقاه بين الأزرار الجاهزة');
+};
+$('#bdMine').onclick = () => openMine('boards'); $('#shMine').onclick = () => openMine('shapes');
+$('#shPresets').addEventListener('click', (e) => { const b = e.target.closest('[data-u]'); if (b) SH.load(b.dataset.u); });
+$('#bdBoard').addEventListener('change', (e) => { if (/^[us]:/.test(e.target.value)) BD.load(e.target.value); });
+fetch('gallery/presets.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) { MY.shop.boards = (j.boards || []).filter((x) => x?.name && x?.P); MY.shop.shapes = (j.shapes || []).filter((x) => x?.name && x?.P); refreshMine(); } }).catch(() => {});
+refreshMine();
 /* ================= الطلب ================= */
 const MODE_LABEL = { lithophane: 'ليثوفين', relief: 'نقش بارز', face: 'نقش وجه', keychain: 'ميدالية من صورة', cookie: 'قالب كوكيز' };
 const O = {
@@ -969,9 +1037,9 @@ const O = {
     if (this.source === 'board' && BD.parts) {
       const B = BD.B, names = PART_NAMES, pr = BD.printable();
       return {
-        title: `علبة ${BOARDS[B.key]?.n || 'لوحة'}`, unit: BD.stats.price,
+        title: `علبة ${BD.name || BOARDS[B.key]?.n || 'لوحة'}`, unit: BD.stats.price,
         rows: [
-          ['اللوحة', BOARDS[B.key]?.n || 'مخصصة'], ['مقاس اللوحة', `${B.w} × ${B.d} مم`], ['مقاس العلبة', BD.stats.box.map((v) => fmt(v)).join(' × ') + ' مم'],
+          ['اللوحة', BD.name || BOARDS[B.key]?.n || 'مخصصة'], ['مقاس اللوحة', `${B.w} × ${B.d} مم`], ['مقاس العلبة', BD.stats.box.map((v) => fmt(v)).join(' × ') + ' مم'],
           ['الفتحات', B.ports.map((p) => PORT_TYPES[p.type][0]).join(', ') || '—'], ['الغطاء', B.lid ? 'نعم' : 'لا'], ['الكتابة', B.label || '—'],
           ['الألوان', pr.map((p) => `<i class="sw" title="${names[p.key]}" style="background:${p.color}"></i>`).join(' ')],
         ],

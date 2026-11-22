@@ -317,3 +317,8 @@ body.mod-takeaway .m-sleeve { display: flex; }
 .port input, .port select { min-width: 0; padding: 6px 6px; font-size: .85rem; width: 100%; }
 .port button { border: 0; background: transparent; color: inherit; cursor: pointer; opacity: .6; font-size: 1rem; }
 #bdHolesTxt { width: 100%; font-family: monospace; }
+
+.mine-row { display: flex; gap: 8px; margin: 6px 0 12px; flex-wrap: wrap; }
+.mine-list { display: grid; gap: 8px; margin: 12px 0; max-height: 50vh; overflow: auto; }
+.mrow { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid #8883; border-radius: 10px; }
+.mrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
